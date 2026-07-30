@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: agentmarket-api
+    runtime: docker
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: .
+    plan: starter
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 4000
+      - key: DATABASE_URL
+        sync: false
+      - key: PAYMENT_PROVIDER
+        value: algorand-x402
+      - key: ALGORAND_NETWORK
+        value: testnet
+      - key: X402_FACILITATOR_URL
+        sync: false
+      - key: X402_PAY_TO_ADDRESS
+        sync: false
+      - key: X402_USDC_ASSET_ID
+        sync: false
+      - key: CORS_ORIGIN
+        sync: false
+    healthCheckPath: /health

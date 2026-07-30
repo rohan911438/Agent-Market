@@ -1,0 +1,190 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+/// A person/organization behind API usage. Optional — most Phase 1 traffic
+/// is anonymous-by-wallet or anonymous-by-IP, so userId is nullable
+/// everywhere it appears.
+model User {
+  id        String   @id @default(cuid())
+  email     String?  @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  wallets     Wallet[]
+  payments    Payment[]
+  apiRequests ApiRequest[]
+  usage       Usage[]
+  auditLogs   AuditLog[]
+}
+
+/// An Algorand address seen making (or attempting) a payment. Verified once
+/// it has at least one SETTLED payment, which is what promotes its rate
+/// limit tier from anonymous to wallet-verified.
+model Wallet {
+  id          String   @id @default(cuid())
+  address     String   @unique
+  network     String
+  isVerified  Boolean  @default(false)
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id])
+  firstSeenAt DateTime @default(now())
+  lastSeenAt  DateTime @updatedAt
+
+  payments    Payment[]
+  apiRequests ApiRequest[]
+  rateLimits  RateLimit[]
+  usage       Usage[]
+
+  @@index([userId])
+}
+
+/// One x402 payment. paymentRef is the unique reference extracted from the
+/// client's X-PAYMENT payload (scheme-specific nonce/tx id) — the unique
+/// constraint is the mechanism that makes retries/replays idempotent
+/// instead of double-charging or double-executing.
+model Payment {
+  id               String    @id @default(cuid())
+  paymentRef       String    @unique
+  resource         String
+  amountAtomic     String
+  asset            String
+  network          String
+  scheme           String
+  status           String
+  transactionId    String?
+  walletId         String?
+  wallet           Wallet?   @relation(fields: [walletId], references: [id])
+  userId           String?
+  user             User?     @relation(fields: [userId], references: [id])
+  cachedResponseId String?
+  cachedResponse   CachedResponse? @relation(fields: [cachedResponseId], references: [id])
+  createdAt        DateTime  @default(now())
+  settledAt        DateTime?
+
+  apiRequests ApiRequest[]
+
+  @@index([walletId])
+  @@index([status])
+}
+
+/// One observability record per HTTP request to a metered route.
+model ApiRequest {
+  id           String   @id @default(cuid())
+  requestId    String   @unique
+  route        String
+  method       String
+  ipAddress    String
+  walletId     String?
+  wallet       Wallet?  @relation(fields: [walletId], references: [id])
+  userId       String?
+  user         User?    @relation(fields: [userId], references: [id])
+  paymentId    String?
+  payment      Payment? @relation(fields: [paymentId], references: [id])
+  providerUsed String?
+  cacheHit     Boolean  @default(false)
+  statusCode   Int
+  latencyMs    Int
+  errorCode    String?
+  createdAt    DateTime @default(now())
+
+  @@index([route])
+  @@index([walletId])
+  @@index([createdAt])
+}
+
+/// Response cache persisted alongside the in-memory cache so that a
+/// duplicate payment reference can be served from durable storage even
+/// after a process restart.
+model CachedResponse {
+  id        String   @id @default(cuid())
+  cacheKey  String   @unique
+  route     String
+  payload   String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  payments Payment[]
+
+  @@index([expiresAt])
+}
+
+/// Persisted token-bucket state, keyed by "ip:<addr>" or "wallet:<address>".
+/// The live limiter runs off the cache package; this table is the durable
+/// audit trail plus the recovery source if the cache is cold.
+model RateLimit {
+  id           String   @id @default(cuid())
+  identifier   String
+  walletId     String?
+  wallet       Wallet?  @relation(fields: [walletId], references: [id])
+  windowStart  DateTime
+  requestCount Int      @default(0)
+  updatedAt    DateTime @updatedAt
+
+  @@unique([identifier, windowStart])
+}
+
+/// Daily usage/spend rollup per wallet+route, backing per-wallet quotas and
+/// daily spending caps, and the dashboard's usage charts.
+model Usage {
+  id           String   @id @default(cuid())
+  date         DateTime
+  route        String
+  requestCount Int      @default(0)
+  spendUsd     Float    @default(0)
+  walletId     String?
+  wallet       Wallet?  @relation(fields: [walletId], references: [id])
+  userId       String?
+  user         User?    @relation(fields: [userId], references: [id])
+
+  @@unique([walletId, date, route])
+}
+
+/// Append-only security/audit trail. `metadata` is redacted (via
+/// @agentmarket/secrets#redactSecrets) before it is ever serialized here.
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorType String
+  actorId   String?
+  action    String
+  metadata  String?
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@index([action])
+  @@index([createdAt])
+}
+
+/// Registered upstream data/payment providers and their live health, used
+/// by the provider registry's circuit breaker and surfaced on the
+/// dashboard/marketplace.
+model Provider {
+  id            String    @id @default(cuid())
+  name          String    @unique
+  capability    String
+  isEnabled     Boolean   @default(true)
+  isKeyless     Boolean   @default(true)
+  lastSuccessAt DateTime?
+  lastFailureAt DateTime?
+  failureCount  Int       @default(0)
+}
+
+/// Marketplace listing for each metered endpoint — what the frontend
+/// marketplace/pricing pages read from.
+model MarketplaceApi {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  description String
+  category    String
+  priceUsd    Float
+  endpoint    String
+  status      String
+  createdAt   DateTime @default(now())
+}
