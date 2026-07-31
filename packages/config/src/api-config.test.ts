@@ -32,4 +32,34 @@ describe('loadApiConfig', () => {
     const config = loadApiConfig({});
     expect(config.providerKeys.newsApiKey).toBeUndefined();
   });
+
+  it('rejects PAYMENT_PROVIDER=mock when NODE_ENV=production', () => {
+    expect(() => loadApiConfig({ NODE_ENV: 'production', WALLET_TOKEN_SECRET: 'real-secret' })).toThrow(
+      SecretValidationError,
+    );
+  });
+
+  it('rejects the default WALLET_TOKEN_SECRET when NODE_ENV=production', () => {
+    expect(() =>
+      loadApiConfig({
+        NODE_ENV: 'production',
+        PAYMENT_PROVIDER: 'algorand-x402',
+        X402_FACILITATOR_URL: 'https://facilitator.example.com',
+        X402_PAY_TO_ADDRESS: 'SOME_ADDRESS',
+        X402_USDC_ASSET_ID: '12345',
+      }),
+    ).toThrow(SecretValidationError);
+  });
+
+  it('accepts a production config with a real payment provider and wallet token secret', () => {
+    const config = loadApiConfig({
+      NODE_ENV: 'production',
+      PAYMENT_PROVIDER: 'algorand-x402',
+      X402_FACILITATOR_URL: 'https://facilitator.example.com',
+      X402_PAY_TO_ADDRESS: 'SOME_ADDRESS',
+      X402_USDC_ASSET_ID: '12345',
+      WALLET_TOKEN_SECRET: 'real-secret',
+    });
+    expect(config.security.walletTokenSecret).toBe('real-secret');
+  });
 });

@@ -25,6 +25,7 @@ export function buildContext(overrideConfig?: ApiConfig): AppContext {
             network: config.payments.algorandNetwork,
             payToAddress: config.payments.payToAddress!,
             usdcAssetId: config.payments.usdcAssetId!,
+            feePayerAddress: config.payments.feePayerAddress,
           }
         : undefined,
   });

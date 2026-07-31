@@ -17,6 +17,7 @@ import type { PaymentContext, PaymentProvider } from './payment-provider.interfa
  */
 export class MockPaymentProvider implements PaymentProvider {
   readonly id = 'mock';
+  readonly x402Version = 1;
 
   getRequirements(context: PaymentContext): PaymentRequirement {
     return {

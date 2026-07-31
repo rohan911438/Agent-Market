@@ -90,7 +90,7 @@ estimated slippage percentage.
 | Tier | Limit | How it's determined |
 |---|---|---|
 | Anonymous | 30 req/min (configurable) | By IP |
-| Wallet-verified | 300 req/min (configurable) | `X-Wallet-Address` header, wallet has ≥1 settled payment |
+| Wallet-verified | 300 req/min (configurable) | `X-Wallet-Token` header (issued by the server in the `X-Wallet-Token` response header after a settled payment; wallet must still be verified) |
 
 `429` responses include `Retry-After` and `X-RateLimit-*` headers.
 
