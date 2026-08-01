@@ -22,6 +22,14 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      # Scoped to production dependencies and gated at `critical` for now —
+      # the full dependency tree (incl. build tooling like vitest/prisma CLI)
+      # currently carries known, tracked, non-blocking findings (see
+      # docs/SECURITY.md "Known gaps"). Ratchet to --audit-level=high once
+      # those are cleared.
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=critical
+
       - name: Generate Prisma client
         run: npm run db:generate
 
@@ -40,3 +48,15 @@ jobs:
 
       - name: Test
         run: npm test
+
+  dependency-review:
+    # Flags newly-introduced vulnerable/incompatible-license dependencies in
+    # a PR diff before merge — complements the `npm audit` snapshot above,
+    # which only sees the state of the tree as of that push.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
