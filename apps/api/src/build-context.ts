@@ -4,6 +4,7 @@ import { createPrismaClient, Database } from '@agentmarket/database';
 import { IntelligenceEngine, RuleBasedExplainer } from '@agentmarket/intelligence-engine';
 import { createPaymentProviderRegistry, X402PaymentService } from '@agentmarket/payments';
 import { createProviderRegistry } from '@agentmarket/providers';
+import { Redis } from 'ioredis';
 import type { AppContext } from './context.js';
 import { RateLimiterService } from './services/rate-limiter.js';
 
@@ -12,7 +13,10 @@ export function buildContext(overrideConfig?: ApiConfig): AppContext {
   const config = overrideConfig ?? loadApiConfig();
 
   const db = new Database(createPrismaClient(config.database.url));
-  const cache = createCache(config.cache.driver);
+  // packages/cache stays client-agnostic (see its factory.ts) — the concrete
+  // redis client lives here, in the one place allowed to know about it.
+  const redisClient = config.cache.driver === 'redis' ? new Redis(config.cache.redisUrl!) : undefined;
+  const cache = createCache(config.cache.driver, redisClient);
   const providerRegistry = createProviderRegistry({ newsApiKey: config.providerKeys.newsApiKey });
   const intelligenceEngine = new IntelligenceEngine(providerRegistry, new RuleBasedExplainer());
 
