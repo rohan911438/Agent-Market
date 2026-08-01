@@ -106,7 +106,7 @@ flowchart LR
     subgraph Vercel
         Web[apps/web — Next.js]
     end
-    subgraph Railway/Render
+    subgraph Render
         Api[apps/api — Fastify]
         DB[(SQLite / Postgres)]
     end

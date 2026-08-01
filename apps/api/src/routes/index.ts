@@ -14,7 +14,7 @@ import { registerTrendingAssetsRoute } from './trending-assets.route.js';
 
 export function registerRoutes(server: FastifyInstance, ctx: AppContext): void {
   // Free
-  registerHealthRoute(server);
+  registerHealthRoute(server, ctx);
   registerMarketplaceRoute(server, ctx);
   registerDashboardRoute(server, ctx);
 
