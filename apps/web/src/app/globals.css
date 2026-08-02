@@ -1,23 +1,149 @@
 @import 'tailwindcss';
 
 @theme {
-  --color-background: #0a0a0f;
-  --color-surface: #12121a;
-  --color-surface-hover: #191924;
-  --color-border: #242433;
+  /* Surfaces */
+  --color-background: #08080c;
+  --color-surface: #101014;
+  --color-surface-2: #15151b;
+  --color-surface-hover: #1b1b23;
+  --color-border: #212129;
+  --color-border-strong: #2c2c37;
+
+  /* Text */
+  --color-foreground: #f5f5f7;
+  --color-muted: #93939f;
+  --color-muted-2: #5f5f6c;
+
+  /* Brand */
   --color-primary: #6366f1;
   --color-primary-hover: #818cf8;
+  --color-primary-foreground: #ffffff;
   --color-accent: #22d3ee;
-  --color-muted: #8b8ba7;
+  --color-accent-hover: #67e8f9;
+
+  /* Semantic */
   --color-success: #34d399;
+  --color-success-bg: #34d39918;
   --color-warning: #fbbf24;
+  --color-warning-bg: #fbbf2418;
   --color-danger: #f87171;
-  --font-sans: ui-sans-serif, system-ui, sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  --color-danger-bg: #f8717118;
+  --color-info: #60a5fa;
+  --color-info-bg: #60a5fa18;
+  --color-payment: #c084fc;
+  --color-payment-bg: #c084fc18;
+  --color-ai: #818cf8;
+  --color-ai-bg: #818cf818;
+
+  /* Code blocks stay dark in both themes (deliberate — matches terminal/IDE aesthetic) */
+  --color-code-bg: #0b0b10;
+  --color-code-border: #212129;
+
+  /* Typography */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: var(--font-mono-jb), ui-monospace, SFMono-Regular, Menlo, monospace;
+  --font-display: var(--font-space-grotesk), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+
+  /* Radii */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.625rem;
+  --radius-lg: 0.875rem;
+  --radius-xl: 1.25rem;
+
+  /* Shadows */
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+  --shadow-card: 0 1px 2px 0 rgb(0 0 0 / 0.24), 0 8px 24px -12px rgb(0 0 0 / 0.5);
+  --shadow-card-hover: 0 2px 4px 0 rgb(0 0 0 / 0.3), 0 16px 40px -12px rgb(0 0 0 / 0.6);
+  --shadow-glow-primary: 0 0 0 1px color-mix(in srgb, var(--color-primary) 40%, transparent), 0 8px 24px -8px color-mix(in srgb, var(--color-primary) 55%, transparent);
+  --shadow-glow-accent: 0 0 0 1px color-mix(in srgb, var(--color-accent) 35%, transparent), 0 8px 24px -8px color-mix(in srgb, var(--color-accent) 45%, transparent);
+
+  --animate-shimmer: shimmer 1.8s ease-in-out infinite;
+  --animate-fade-in: fade-in 0.5s ease both;
+  --animate-marquee: marquee 28s linear infinite;
+  --animate-drift: drift 18s ease-in-out infinite;
+
+  @keyframes shimmer {
+    0% {
+      background-position: -200% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
+  }
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  @keyframes marquee {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(-50%);
+    }
+  }
+  @keyframes drift {
+    0%,
+    100% {
+      transform: translate(0, 0) scale(1);
+    }
+    50% {
+      transform: translate(3%, -4%) scale(1.08);
+    }
+  }
+}
+
+/* Light theme overrides — same custom-property names, different values.
+   Applied via [data-theme="light"] on <html>, set by ThemeProvider. */
+[data-theme='light'] {
+  --color-background: #fbfbfd;
+  --color-surface: #ffffff;
+  --color-surface-2: #f7f7f9;
+  --color-surface-hover: #f0f0f3;
+  --color-border: #e7e7ec;
+  --color-border-strong: #d8d8e0;
+
+  --color-foreground: #0b0b10;
+  --color-muted: #62626f;
+  --color-muted-2: #96969f;
+
+  --color-primary: #4f46e5;
+  --color-primary-hover: #4338ca;
+  --color-accent: #0891b2;
+  --color-accent-hover: #0e7490;
+
+  --color-success: #059669;
+  --color-success-bg: #05966914;
+  --color-warning: #d97706;
+  --color-warning-bg: #d9770614;
+  --color-danger: #dc2626;
+  --color-danger-bg: #dc262614;
+  --color-info: #2563eb;
+  --color-info-bg: #2563eb14;
+  --color-payment: #9333ea;
+  --color-payment-bg: #9333ea14;
+  --color-ai: #4f46e5;
+  --color-ai-bg: #4f46e514;
+
+  --shadow-card: 0 1px 2px 0 rgb(15 15 20 / 0.04), 0 8px 24px -12px rgb(15 15 20 / 0.1);
+  --shadow-card-hover: 0 2px 4px 0 rgb(15 15 20 / 0.06), 0 16px 32px -12px rgb(15 15 20 / 0.14);
 }
 
 :root {
   color-scheme: dark;
+}
+[data-theme='light'] {
+  color-scheme: light;
+}
+
+* {
+  border-color: var(--color-border);
 }
 
 html {
@@ -26,7 +152,8 @@ html {
 
 body {
   background-color: var(--color-background);
-  color: #e5e5f0;
+  color: var(--color-foreground);
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 ::selection {
@@ -34,11 +161,78 @@ body {
   color: white;
 }
 
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background-color: var(--color-border-strong);
+  border-radius: 9999px;
+  border: 2px solid var(--color-background);
+}
+
 .scrollbar-thin::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 .scrollbar-thin::-webkit-scrollbar-thumb {
-  background-color: var(--color-border);
+  background-color: var(--color-border-strong);
   border-radius: 9999px;
+  border: none;
+}
+
+/* Reduced-motion: neutralize CSS keyframe/transition animations app-wide.
+   Framer Motion components separately respect prefers-reduced-motion via useReducedMotion(). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+.text-gradient {
+  background: linear-gradient(120deg, var(--color-foreground) 20%, var(--color-primary) 60%, var(--color-accent) 100%);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+.bg-grid {
+  background-image:
+    linear-gradient(to right, color-mix(in srgb, var(--color-border) 60%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--color-border) 60%, transparent) 1px, transparent 1px);
+  background-size: 44px 44px;
+}
+
+.bg-radial-fade {
+  background: radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--color-primary) 16%, transparent), transparent 60%);
+}
+
+.glass {
+  background-color: color-mix(in srgb, var(--color-surface) 72%, transparent);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+}
+
+.mask-fade-x {
+  mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
+}
+
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--color-surface-2) 25%,
+    var(--color-surface-hover) 50%,
+    var(--color-surface-2) 75%
+  );
+  background-size: 200% 100%;
+  animation: var(--animate-shimmer);
 }

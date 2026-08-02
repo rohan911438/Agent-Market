@@ -4,11 +4,15 @@ import { WalletConnectButton } from '@/components/wallet-connect-button';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { JsonViewer } from '@/components/ui/json-viewer';
+import { Select } from '@/components/ui/select';
 import { callApi } from '@/lib/api-client';
 import { buildDemoPaymentHeader, buildRealPaymentHeader } from '@/lib/x402-client';
 import { useWallet } from '@/lib/wallet-context';
 import type { PaymentRequiredResponse } from '@agentmarket/shared-types';
+import { AnimatePresence, motion } from 'framer-motion';
+import { AlertTriangle, ArrowRight, Hash, Send, ShieldCheck, Wallet, Zap } from 'lucide-react';
 import { useState } from 'react';
 
 interface ExplorerEndpoint {
@@ -29,6 +33,13 @@ const ENDPOINTS: ExplorerEndpoint[] = [
 ];
 
 type FlowState = 'idle' | 'requesting' | 'signing' | 'paying' | 'success' | 'error';
+
+const STEPS: { key: FlowState[]; label: string; icon: typeof Send }[] = [
+  { key: ['requesting'], label: 'Request', icon: Send },
+  { key: ['signing'], label: 'Sign', icon: Wallet },
+  { key: ['paying'], label: 'Pay & retry', icon: Zap },
+  { key: ['success'], label: 'Response', icon: ShieldCheck },
+];
 
 export default function ExplorerPage() {
   const { address, walletToken, setWalletToken, getSigner } = useWallet();
@@ -123,58 +134,82 @@ export default function ExplorerPage() {
   }
 
   const busy = state === 'requesting' || state === 'signing' || state === 'paying';
+  const activeStepIndex = STEPS.findIndex((s) => s.key.includes(state));
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-12">
-      <h1 className="text-2xl font-semibold text-white">API Explorer</h1>
+      <h1 className="font-display text-4xl font-bold tracking-tight text-foreground">API Explorer</h1>
       <p className="mt-2 max-w-2xl text-muted">
-        Pick an endpoint and send a request. You&apos;ll see the real HTTP 402, then AgentMarket authorize
-        a payment and retry — exactly what an autonomous agent does, no manual checkout.
+        Pick an endpoint and send a request. You&apos;ll see the real HTTP 402, then AgentMarket authorize a
+        payment and retry — exactly what an autonomous agent does, no manual checkout.
       </p>
 
-      <div className="mt-8 grid gap-6 lg:grid-cols-[320px_1fr]">
+      {/* Flow stepper */}
+      <div className="mt-8 flex items-center gap-2 overflow-x-auto pb-1">
+        {STEPS.map((step, i) => {
+          const isActive = i === activeStepIndex;
+          const isDone = state === 'success' ? true : activeStepIndex > i;
+          return (
+            <div key={step.label} className="flex items-center gap-2">
+              <div
+                className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                  isActive
+                    ? 'border-primary/40 bg-primary/10 text-primary'
+                    : isDone
+                      ? 'border-success/30 bg-success-bg text-success'
+                      : 'border-border text-muted-2'
+                }`}
+              >
+                <step.icon className="h-3.5 w-3.5" />
+                {step.label}
+              </div>
+              {i < STEPS.length - 1 && <ArrowRight className="h-3.5 w-3.5 shrink-0 text-muted-2" />}
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="mt-6 grid gap-6 lg:grid-cols-[340px_1fr]">
         <Card className="h-fit">
           <CardHeader>
             <CardTitle>Request</CardTitle>
           </CardHeader>
           <CardBody className="space-y-4">
-            <div>
-              <label className="mb-1 block text-xs font-medium text-muted">Endpoint</label>
-              <select
-                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-white"
-                value={endpointIndex}
-                onChange={(e) => setEndpointIndex(Number(e.target.value))}
-              >
-                {ENDPOINTS.map((ep, i) => (
-                  <option key={ep.path} value={i}>
-                    {ep.label} — ${ep.price.toFixed(2)}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <Select
+              label="Endpoint"
+              value={endpointIndex}
+              onChange={(e) => setEndpointIndex(Number(e.target.value))}
+            >
+              {ENDPOINTS.map((ep, i) => (
+                <option key={ep.path} value={i}>
+                  {ep.label} — ${ep.price.toFixed(2)}
+                </option>
+              ))}
+            </Select>
 
             {endpoint.params.includes('symbol') && (
-              <div>
-                <label className="mb-1 block text-xs font-medium text-muted">Symbol</label>
-                <input
-                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-white"
-                  value={symbol}
-                  onChange={(e) => setSymbol(e.target.value.toUpperCase())}
-                  placeholder="BTC"
-                />
-              </div>
+              <Input
+                label="Symbol"
+                icon={<Hash className="h-3.5 w-3.5" />}
+                value={symbol}
+                onChange={(e) => setSymbol(e.target.value.toUpperCase())}
+                placeholder="BTC"
+              />
             )}
 
             {!address && (
-              <div className="rounded-lg border border-warning/30 bg-warning/10 p-3 text-xs text-warning">
-                <p>Connect a wallet to authorize payment when a 402 is returned.</p>
+              <div className="rounded-lg border border-warning/30 bg-warning-bg p-3 text-xs text-warning">
+                <p className="flex items-center gap-1.5">
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                  Connect a wallet to authorize payment when a 402 is returned.
+                </p>
                 <div className="mt-2">
                   <WalletConnectButton />
                 </div>
               </div>
             )}
 
-            <Button className="w-full" onClick={() => void runFlow()} disabled={busy}>
+            <Button className="w-full" onClick={() => void runFlow()} loading={busy} icon={!busy ? <Send className="h-4 w-4" /> : undefined}>
               {state === 'requesting' && 'Requesting…'}
               {state === 'signing' && 'Confirm in Pera Wallet…'}
               {state === 'paying' && 'Paying & retrying…'}
@@ -187,46 +222,60 @@ export default function ExplorerPage() {
         </Card>
 
         <div className="space-y-4">
-          {paymentRequirements ? (
-            <Card>
-              <CardHeader className="flex items-center justify-between">
-                <CardTitle>402 Payment Required</CardTitle>
-                <Badge tone="warning">HTTP 402</Badge>
-              </CardHeader>
-              <CardBody>
-                <JsonViewer data={paymentRequirements} />
-              </CardBody>
-            </Card>
-          ) : null}
+          <AnimatePresence mode="popLayout">
+            {paymentRequirements ? (
+              <motion.div key="402" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+                <Card>
+                  <CardHeader className="flex items-center justify-between">
+                    <CardTitle>402 Payment Required</CardTitle>
+                    <Badge tone="warning">HTTP 402</Badge>
+                  </CardHeader>
+                  <CardBody>
+                    <JsonViewer data={paymentRequirements} />
+                  </CardBody>
+                </Card>
+              </motion.div>
+            ) : null}
 
-          {response ? (
-            <Card>
-              <CardHeader className="flex items-center justify-between">
-                <CardTitle>Response</CardTitle>
-                <Badge tone="success">200 OK</Badge>
-              </CardHeader>
-              <CardBody>
-                <JsonViewer data={response} />
-              </CardBody>
-            </Card>
-          ) : null}
+            {response ? (
+              <motion.div key="200" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+                <Card>
+                  <CardHeader className="flex items-center justify-between">
+                    <CardTitle>Response</CardTitle>
+                    <Badge tone="success">200 OK</Badge>
+                  </CardHeader>
+                  <CardBody>
+                    <JsonViewer data={response} />
+                  </CardBody>
+                </Card>
+              </motion.div>
+            ) : null}
 
-          {error ? (
-            <Card>
-              <CardHeader>
-                <CardTitle>Error</CardTitle>
-              </CardHeader>
-              <CardBody className="whitespace-pre-wrap text-sm text-danger">{error}</CardBody>
-            </Card>
-          ) : null}
+            {error ? (
+              <motion.div key="err" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+                <Card>
+                  <CardHeader className="flex items-center justify-between">
+                    <CardTitle>Error</CardTitle>
+                    <Badge tone="danger">Failed</Badge>
+                  </CardHeader>
+                  <CardBody className="whitespace-pre-wrap font-mono text-sm text-danger">{error}</CardBody>
+                </Card>
+              </motion.div>
+            ) : null}
 
-          {!paymentRequirements && !response && !error ? (
-            <Card>
-              <CardBody className="text-sm text-muted">
-                Send a request to see the live 402 → pay → 200 flow.
-              </CardBody>
-            </Card>
-          ) : null}
+            {!paymentRequirements && !response && !error ? (
+              <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                <Card>
+                  <CardBody className="flex flex-col items-center gap-2 py-12 text-center">
+                    <span className="flex h-11 w-11 items-center justify-center rounded-full bg-surface-hover text-muted">
+                      <Send className="h-5 w-5" />
+                    </span>
+                    <p className="text-sm text-muted">Send a request to see the live 402 → pay → 200 flow.</p>
+                  </CardBody>
+                </Card>
+              </motion.div>
+            ) : null}
+          </AnimatePresence>
         </div>
       </div>
     </div>
