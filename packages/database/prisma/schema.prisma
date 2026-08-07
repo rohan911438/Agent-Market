@@ -188,3 +188,54 @@ model MarketplaceApi {
   status      String
   createdAt   DateTime @default(now())
 }
+
+/// A third-party developer/organization publishing APIs onto the
+/// marketplace — the supply side of Phase 2. Distinct from `Provider`
+/// (an internal upstream data source used by the intelligence engine's
+/// circuit breaker): this is an account on the *other* side of the
+/// two-sided marketplace, authenticated by its own API key rather than
+/// a wallet or session.
+model ProviderAccount {
+  id            String    @id @default(cuid())
+  name          String
+  email         String    @unique
+  walletAddress String
+  apiKeyHash    String    @unique
+  status        String    @default("pending") // pending | verified | suspended
+  verifiedAt    DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  listings ApiListing[]
+
+  @@index([status])
+}
+
+/// One API listing owned by a ProviderAccount, moving through the
+/// publishing pipeline: draft (uploaded) -> pricing configured -> payment
+/// configured -> published (gate passed, live on the marketplace).
+model ApiListing {
+  id                 String    @id @default(cuid())
+  providerAccountId  String
+  providerAccount    ProviderAccount @relation(fields: [providerAccountId], references: [id])
+  slug               String    @unique
+  name               String
+  description        String
+  category           String
+  tags               String    @default("[]") // JSON-encoded string[]
+  version            String    @default("1.0.0")
+  upstreamUrl        String
+  openApiSpec        String?
+  docsUrl            String?
+  pricingModel       String    @default("pay_per_call") // pay_per_call | subscription | bundle
+  priceUsd           Float?
+  payoutWalletAddress String?
+  payoutSplitBps     Int       @default(8000) // provider's share of each settlement; platform take-rate = 10000 - this
+  status             String    @default("draft") // draft | published | suspended
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  publishedAt        DateTime?
+
+  @@index([providerAccountId])
+  @@index([status])
+}

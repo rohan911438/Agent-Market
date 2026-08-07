@@ -1,7 +1,7 @@
 import type { AuditLog, PrismaClient } from '@prisma/client';
 
 export interface RecordAuditLogInput {
-  actorType: 'wallet' | 'system' | 'admin';
+  actorType: 'wallet' | 'system' | 'admin' | 'provider_account';
   actorId?: string;
   action: string;
   metadata?: Record<string, unknown>;

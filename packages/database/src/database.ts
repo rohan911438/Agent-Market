@@ -1,10 +1,12 @@
 import type { PrismaClient } from '@prisma/client';
 import { getPrismaClient } from './client.js';
+import { ApiListingRepository } from './repositories/api-listing.repository.js';
 import { ApiRequestRepository } from './repositories/api-request.repository.js';
 import { AuditLogRepository } from './repositories/audit-log.repository.js';
 import { CachedResponseRepository } from './repositories/cached-response.repository.js';
 import { MarketplaceApiRepository } from './repositories/marketplace-api.repository.js';
 import { PaymentRepository } from './repositories/payment.repository.js';
+import { ProviderAccountRepository } from './repositories/provider-account.repository.js';
 import { ProviderRepository } from './repositories/provider.repository.js';
 import { RateLimitRepository } from './repositories/rate-limit.repository.js';
 import { UsageRepository } from './repositories/usage.repository.js';
@@ -27,6 +29,8 @@ export class Database {
   readonly auditLogs: AuditLogRepository;
   readonly providers: ProviderRepository;
   readonly marketplaceApis: MarketplaceApiRepository;
+  readonly providerAccounts: ProviderAccountRepository;
+  readonly apiListings: ApiListingRepository;
 
   constructor(readonly prisma: PrismaClient = getPrismaClient()) {
     this.users = new UserRepository(prisma);
@@ -39,6 +43,8 @@ export class Database {
     this.auditLogs = new AuditLogRepository(prisma);
     this.providers = new ProviderRepository(prisma);
     this.marketplaceApis = new MarketplaceApiRepository(prisma);
+    this.providerAccounts = new ProviderAccountRepository(prisma);
+    this.apiListings = new ApiListingRepository(prisma);
   }
 
   disconnect(): Promise<void> {
