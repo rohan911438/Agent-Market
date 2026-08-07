@@ -3,10 +3,11 @@ import type { InputHTMLAttributes, ReactNode } from 'react';
 
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string;
+  hint?: string;
   icon?: ReactNode;
 }
 
-export function Input({ label, icon, id, className, ...props }: InputProps) {
+export function Input({ label, hint, icon, id, className, ...props }: InputProps) {
   const input = (
     <div className="relative">
       {icon && (
@@ -29,8 +30,9 @@ export function Input({ label, icon, id, className, ...props }: InputProps) {
 
   return (
     <div>
-      <label htmlFor={id} className="mb-1.5 block text-xs font-medium text-muted">
-        {label}
+      <label htmlFor={id} className="mb-1.5 flex items-baseline justify-between">
+        <span className="text-xs font-medium text-muted">{label}</span>
+        {hint && <span className="text-xs text-muted-2">{hint}</span>}
       </label>
       {input}
     </div>

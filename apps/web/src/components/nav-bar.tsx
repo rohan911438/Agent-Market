@@ -11,6 +11,7 @@ import { WalletConnectButton } from './wallet-connect-button';
 const LINKS = [
   { href: '/explorer', label: 'API Explorer' },
   { href: '/marketplace', label: 'Marketplace' },
+  { href: '/provider', label: 'Publish' },
   { href: '/pricing', label: 'Pricing' },
   { href: '/dashboard', label: 'Dashboard' },
   { href: '/docs', label: 'Docs' },
