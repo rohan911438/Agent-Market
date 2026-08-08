@@ -1,5 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import type { AppContext } from '../context.js';
+import { registerAgentCardRoute } from './a2a/agent-card.route.js';
+import { registerA2ATaskRoutes } from './a2a/tasks.route.js';
 import { registerAnalyzeRoute } from './analyze.route.js';
 import { registerFirstPartyCatalogRoutes } from './catalog/first-party-catalog.route.js';
 import { registerListingCatalogRoutes } from './catalog/listing-catalog.route.js';
@@ -33,6 +35,10 @@ export function registerRoutes(server: FastifyInstance, ctx: AppContext): void {
   registerFirstPartyCatalogRoutes(server, ctx);
   registerListingCatalogRoutes(server, ctx);
   registerMcpRoutes(server, ctx);
+
+  // A2A (Agent-to-Agent) task lifecycle for first-party endpoints (Phase 5)
+  registerAgentCardRoute(server, ctx);
+  registerA2ATaskRoutes(server, ctx);
 
   // Metered (x402-gated)
   registerAnalyzeRoute(server, ctx);
