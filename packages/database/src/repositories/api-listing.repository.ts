@@ -11,6 +11,8 @@ export interface CreateApiListingInput {
   tags: string;
   upstreamUrl: string;
   openApiSpec?: string;
+  /** Canonical parsed JSON of `openApiSpec`, pre-validated by the caller. */
+  parsedOpenApiSpec?: string;
   docsUrl?: string;
 }
 

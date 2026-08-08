@@ -10,6 +10,7 @@ import type { FastifyInstance } from 'fastify';
 import type { AppContext } from '../../context.js';
 import { createProviderAuthPreHandler } from '../../middleware/provider-auth.js';
 import { evaluatePublishGate } from '../../services/listing-publish-gate.js';
+import { parseOpenApiSpec } from '../../services/openapi-spec.js';
 
 function toView(listing: ApiListing): ApiListingView {
   return {
@@ -27,6 +28,13 @@ function toView(listing: ApiListing): ApiListingView {
     payoutWalletAddress: listing.payoutWalletAddress,
     status: listing.status as ApiListingView['status'],
     publishedAt: listing.publishedAt ? listing.publishedAt.toISOString() : null,
+    protocolDocs: listing.parsedOpenApiSpec
+      ? {
+          openapiUrl: `/v1/listings/${listing.slug}/openapi.json`,
+          docsUrl: `/v1/listings/${listing.slug}/docs`,
+          postmanUrl: `/v1/listings/${listing.slug}/postman.json`,
+        }
+      : null,
   };
 }
 
@@ -57,6 +65,10 @@ export function registerListingRoutes(server: FastifyInstance, ctx: AppContext):
       throw new AppError('CONFLICT', `A listing already exists with slug "${input.slug}".`, 409);
     }
 
+    // Validated (not just stored) at upload time so a broken spec fails the
+    // request instead of silently degrading docs/postman/MCP much later.
+    const parsedOpenApiSpec = input.openApiSpec ? parseOpenApiSpec(input.openApiSpec) : undefined;
+
     const listing = await ctx.db.apiListings.create({
       providerAccountId: account.id,
       slug: input.slug,
@@ -66,6 +78,7 @@ export function registerListingRoutes(server: FastifyInstance, ctx: AppContext):
       tags: JSON.stringify(input.tags),
       upstreamUrl: input.upstreamUrl,
       openApiSpec: input.openApiSpec,
+      parsedOpenApiSpec: parsedOpenApiSpec ? JSON.stringify(parsedOpenApiSpec) : undefined,
       docsUrl: input.docsUrl,
     });
 

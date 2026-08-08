@@ -226,6 +226,10 @@ model ApiListing {
   version            String    @default("1.0.0")
   upstreamUrl        String
   openApiSpec        String?
+  /// Canonical parsed JSON of `openApiSpec` (object -> JSON.stringify), so
+  /// the docs/postman/MCP generation pipeline never re-parses provider input
+  /// on every request. Null whenever openApiSpec is null or wasn't provided.
+  parsedOpenApiSpec  String?
   docsUrl            String?
   pricingModel       String    @default("pay_per_call") // pay_per_call | subscription | bundle
   priceUsd           Float?
