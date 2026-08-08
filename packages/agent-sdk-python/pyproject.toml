@@ -1,0 +1,31 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "agentmarket-sdk"
+version = "0.1.0"
+description = "The demand side of AgentMarket, packaged as Python. Discover, price, pay for, and call any metered AgentMarket endpoint with budgets, retries, and fallbacks handled for you."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "AgentMarket" }]
+dependencies = ["httpx>=0.27"]
+
+[project.optional-dependencies]
+# Real Algorand settlement. Kept optional so the mock-payment-scheme path
+# (the one every test and most local dev runs against) never needs
+# py-algorand-sdk installed at all.
+avm = ["x402-avm[avm]>=2.0.2"]
+dev = [
+  "pytest>=8.0",
+  "pytest-asyncio>=0.24",
+  "x402-avm[avm]>=2.0.2",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/agentmarket_sdk"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
