@@ -22,4 +22,9 @@ export class AuditLogRepository {
       },
     });
   }
+
+  /** Backs the trust score's publish-success-rate signal (see services/trust-score.ts). */
+  countByActorAndAction(actorId: string, action: string): Promise<number> {
+    return this.prisma.auditLog.count({ where: { actorId, action } });
+  }
 }

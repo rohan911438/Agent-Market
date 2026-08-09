@@ -1,23 +1,10 @@
-import {
-  AppError,
-  RegisterProviderRequestSchema,
-  type ProviderAccountView,
-} from '@agentmarket/shared-types';
-import type { ProviderAccount } from '@prisma/client';
+import { AppError, RegisterProviderRequestSchema } from '@agentmarket/shared-types';
 import type { FastifyInstance } from 'fastify';
 import type { AppContext } from '../../context.js';
 import { createProviderAuthPreHandler } from '../../middleware/provider-auth.js';
 import { generateApiKey } from '../../services/provider-api-key.js';
-
-function toView(account: ProviderAccount): ProviderAccountView {
-  return {
-    id: account.id,
-    name: account.name,
-    email: account.email,
-    status: account.status as ProviderAccountView['status'],
-    verifiedAt: account.verifiedAt ? account.verifiedAt.toISOString() : null,
-  };
-}
+import { toProviderAccountView } from '../../services/provider-account-view.js';
+import { computeProviderTrust } from '../../services/trust-score.js';
 
 /**
  * Register -> Verify -> (rotate secrets), the account side of the
@@ -60,7 +47,7 @@ export function registerProviderAccountRoutes(server: FastifyInstance, ctx: AppC
     const account = request.providerAccount!;
 
     if (account.status === 'verified') {
-      return toView(account);
+      return toProviderAccountView(account, await computeProviderTrust(ctx, account));
     }
 
     const clash = await ctx.db.providerAccounts.findVerifiedByWalletAddress(account.walletAddress);
@@ -84,7 +71,7 @@ export function registerProviderAccountRoutes(server: FastifyInstance, ctx: AppC
       actorId: account.id,
       action: 'provider_account.verified',
     });
-    return toView(verified);
+    return toProviderAccountView(verified, await computeProviderTrust(ctx, verified));
   });
 
   // Auth — "Rotate secrets" from the dashboard capability list.
@@ -101,6 +88,7 @@ export function registerProviderAccountRoutes(server: FastifyInstance, ctx: AppC
   });
 
   server.get('/v1/providers/me', { preHandler: requireProviderAuth }, async (request) => {
-    return toView(request.providerAccount!);
+    const account = request.providerAccount!;
+    return toProviderAccountView(account, await computeProviderTrust(ctx, account));
   });
 }

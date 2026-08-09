@@ -41,4 +41,9 @@ export class ProviderAccountRepository {
   rotateApiKey(id: string, apiKeyHash: string): Promise<ProviderAccount> {
     return this.prisma.providerAccount.update({ where: { id }, data: { apiKeyHash } });
   }
+
+  /** The manual, admin-only "security audit passed" flag — see routes/admin/provider-verification.route.ts. */
+  setSecurityAuditPassed(id: string): Promise<ProviderAccount> {
+    return this.prisma.providerAccount.update({ where: { id }, data: { securityAuditPassedAt: new Date() } });
+  }
 }

@@ -17,7 +17,7 @@ export function buildTestConfig(overrides: Partial<ApiConfig> = {}): ApiConfig {
     payments: { provider: 'mock', algorandNetwork: 'testnet' },
     rateLimits: { anonymousPerMinute: 1000, walletVerifiedPerMinute: 1000, dailySpendCapUsd: 1000 },
     providerKeys: {},
-    security: { walletTokenSecret: 'test-wallet-token-secret' },
+    security: { walletTokenSecret: 'test-wallet-token-secret', adminApiKey: 'test-admin-api-key' },
     ...overrides,
   };
 }

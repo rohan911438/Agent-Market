@@ -4,6 +4,16 @@ import { CatalogDocsLinksSchema } from './catalog.js';
 export const ProviderAccountStatusSchema = z.enum(['pending', 'verified', 'suspended']);
 export type ProviderAccountStatus = z.infer<typeof ProviderAccountStatusSchema>;
 
+/**
+ * A graduated trust ladder, distinct from `status`: `status` governs whether
+ * an account can operate at all, `verificationTier` governs how much it's
+ * trusted. Any account whose `status` isn't "verified" (pending or
+ * suspended) is "unverified" here regardless of history — see
+ * services/trust-score.ts#computeVerificationTier.
+ */
+export const VerificationTierSchema = z.enum(['unverified', 'verified', 'verified_enterprise']);
+export type VerificationTier = z.infer<typeof VerificationTierSchema>;
+
 export const ListingStatusSchema = z.enum(['draft', 'published', 'suspended']);
 export type ListingStatus = z.infer<typeof ListingStatusSchema>;
 
@@ -44,6 +54,8 @@ export const ProviderAccountViewSchema = z.object({
   email: z.string(),
   status: ProviderAccountStatusSchema,
   verifiedAt: z.string().datetime().nullable(),
+  verificationTier: VerificationTierSchema,
+  trustScore: z.number().int().min(0).max(100),
 });
 export type ProviderAccountView = z.infer<typeof ProviderAccountViewSchema>;
 
@@ -92,6 +104,9 @@ export const ApiListingViewSchema = z.object({
   publishedAt: z.string().datetime().nullable(),
   /** Null when no valid openApiSpec was uploaded — the catalog degrades gracefully rather than requiring one. */
   protocolDocs: CatalogDocsLinksSchema.nullable(),
+  /** The owning provider account's trust signal — see services/trust-score.ts. Same value across every listing of this provider. */
+  providerTrustScore: z.number().int().min(0).max(100),
+  providerVerificationTier: VerificationTierSchema,
 });
 export type ApiListingView = z.infer<typeof ApiListingViewSchema>;
 
