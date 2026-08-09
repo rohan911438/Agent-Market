@@ -106,3 +106,38 @@ export const PublishRejectedResponseSchema = z.object({
   requirements: z.array(PublishRequirementSchema),
 });
 export type PublishRejectedResponse = z.infer<typeof PublishRejectedResponseSchema>;
+
+export const PayoutStatusSchema = z.enum(['pending', 'paid']);
+export type PayoutStatus = z.infer<typeof PayoutStatusSchema>;
+
+export const PayoutViewSchema = z.object({
+  id: z.string(),
+  amountUsd: z.number(),
+  status: PayoutStatusSchema,
+  periodStart: z.string().datetime(),
+  periodEnd: z.string().datetime(),
+  settledAt: z.string().datetime().nullable(),
+});
+export type PayoutView = z.infer<typeof PayoutViewSchema>;
+
+export const RevenueListingBreakdownSchema = z.object({
+  listingId: z.string(),
+  slug: z.string(),
+  name: z.string(),
+  totalUsd: z.number(),
+  paymentCount: z.number().int(),
+});
+export type RevenueListingBreakdown = z.infer<typeof RevenueListingBreakdownSchema>;
+
+/**
+ * Response shape for GET /v1/providers/me/revenue. Accurate zeros — never
+ * fabricated numbers — until the gateway (Phase 12+) starts routing real
+ * traffic to third-party listings; see Phase 07's scope note.
+ */
+export const RevenueSummaryViewSchema = z.object({
+  totalEarnedUsd: z.number(),
+  thisMonthUsd: z.number(),
+  listings: z.array(RevenueListingBreakdownSchema),
+  recentPayouts: z.array(PayoutViewSchema),
+});
+export type RevenueSummaryView = z.infer<typeof RevenueSummaryViewSchema>;

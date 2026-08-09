@@ -6,6 +6,7 @@ export * from './repositories/audit-log.repository.js';
 export * from './repositories/cached-response.repository.js';
 export * from './repositories/marketplace-api.repository.js';
 export * from './repositories/payment.repository.js';
+export * from './repositories/payout.repository.js';
 export * from './repositories/provider-account.repository.js';
 export * from './repositories/provider.repository.js';
 export * from './repositories/rate-limit.repository.js';

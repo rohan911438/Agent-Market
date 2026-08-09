@@ -7,6 +7,14 @@ import { signWalletToken } from '../services/wallet-token.js';
 export interface MeteredRouteMeta {
   resource: string;
   priceUsd: number;
+  /**
+   * Set by a caller proxying a published third-party listing (the gateway,
+   * Phase 12+) so the resulting Payment/ApiRequest rows attribute revenue to
+   * that listing. Every first-party route today omits this, so it's null on
+   * every payment/request row currently written — see Phase 07's scope note
+   * on not fabricating revenue ahead of real traffic.
+   */
+  listingId?: string;
 }
 
 function headerValue(raw: string | string[] | undefined): string | undefined {
@@ -92,6 +100,7 @@ export function createX402PreHandler(ctx: AppContext, meta: MeteredRouteMeta) {
         network: requirement.network,
         scheme: requirement.scheme,
         walletId,
+        listingId: meta.listingId,
       });
     } catch (err) {
       const isUniqueConstraintViolation =
@@ -135,6 +144,7 @@ export function createX402PreHandler(ctx: AppContext, meta: MeteredRouteMeta) {
       requirement,
       transactionId: settleResult.transactionId,
       walletId,
+      listingId: meta.listingId,
     };
   };
 }

@@ -18,6 +18,8 @@ export interface RegisterMeteredRouteOptions<TQuery, TBody, TResult> {
   /** Marketplace/audit identifier, e.g. "/v1/analyze". */
   resource: string;
   priceUsd: number;
+  /** See MeteredRouteMeta.listingId — omitted by every first-party route today. */
+  listingId?: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   querySchema?: ZodType<TQuery, any, any>;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -40,7 +42,7 @@ export interface RegisterMeteredRouteOptions<TQuery, TBody, TResult> {
 export function registerMeteredRoute<TQuery = undefined, TBody = undefined, TResult = unknown>(
   options: RegisterMeteredRouteOptions<TQuery, TBody, TResult>,
 ): void {
-  const { server, ctx, method, url, resource, priceUsd, querySchema, bodySchema, handler } = options;
+  const { server, ctx, method, url, resource, priceUsd, listingId, querySchema, bodySchema, handler } = options;
 
   server.route({
     method,
@@ -51,7 +53,7 @@ export function registerMeteredRoute<TQuery = undefined, TBody = undefined, TRes
         body: bodySchema ? bodySchema.parse(request.body) : undefined,
       };
     },
-    preHandler: [createRateLimitPreHandler(ctx), createX402PreHandler(ctx, { resource, priceUsd })],
+    preHandler: [createRateLimitPreHandler(ctx), createX402PreHandler(ctx, { resource, priceUsd, listingId })],
     handler: async (request, reply) => {
       const query = request.validated?.query as TQuery;
       const body = request.validated?.body as TBody;
@@ -93,6 +95,7 @@ export function registerMeteredRoute<TQuery = undefined, TBody = undefined, TRes
           statusCode: reply.statusCode,
           latencyMs,
           errorCode: reply.statusCode >= 400 ? request.errorCode : undefined,
+          listingId,
         });
 
         if (reply.statusCode === 200 && request.paymentContext?.walletId) {
