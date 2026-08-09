@@ -253,6 +253,11 @@ model ApiListing {
   payoutWalletAddress String?
   payoutSplitBps     Int       @default(8000) // provider's share of each settlement; platform take-rate = 10000 - this
   status             String    @default("draft") // draft | published | suspended
+  /// Schema placeholder only (Phase 10) — no review submission flow exists
+  /// yet, so this is always null until one is built. Null (not 0) means "no
+  /// rating data", distinct from a genuine 0-star average.
+  avgRating          Float?
+  reviewCount        Int       @default(0)
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
   publishedAt        DateTime?
@@ -262,6 +267,25 @@ model ApiListing {
 
   @@index([providerAccountId])
   @@index([status])
+}
+
+/// Admin/operator-curated shelf of catalog entries (Phase 10) — e.g. the
+/// marketplace's "Featured" row. `listingIds` is a JSON-encoded, ordered
+/// string[] of catalog entry ids (either an `ApiListing.id` or a
+/// `MarketplaceApi.id` — the same `id` values the merged /v1/marketplace
+/// response uses), resolved against that live catalog at read time rather
+/// than a hard FK, since a single collection can span both first- and
+/// third-party entries. No self-service UI — populated by a direct DB seed
+/// or the admin-only upsert endpoint only.
+model Collection {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  description String
+  listingIds  String   @default("[]")
+  position    Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 /// A ledger record of a provider's earned share of settled payments for a

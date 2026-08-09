@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import type { AppContext } from '../context.js';
 import { registerAgentCardRoute } from './a2a/agent-card.route.js';
 import { registerA2ATaskRoutes } from './a2a/tasks.route.js';
+import { registerCollectionsAdminRoutes } from './admin/collections.route.js';
 import { registerProviderVerificationAdminRoutes } from './admin/provider-verification.route.js';
 import { registerAnalyzeRoute } from './analyze.route.js';
 import { registerFirstPartyCatalogRoutes } from './catalog/first-party-catalog.route.js';
@@ -41,6 +42,9 @@ export function registerRoutes(server: FastifyInstance, ctx: AppContext): void {
 
   // Analytics — provider-facing operational dashboard (Phase 9)
   registerProviderAnalyticsRoutes(server, ctx);
+
+  // Marketplace storefront — curated shelves, admin-only (Phase 10)
+  registerCollectionsAdminRoutes(server, ctx);
 
   // Protocol-native catalog — OpenAPI/Swagger/Postman/MCP (Phase 4)
   registerSwaggerUiAssets(server);

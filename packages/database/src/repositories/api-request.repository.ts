@@ -57,4 +57,37 @@ export class ApiRequestRepository {
       orderBy: { createdAt: 'asc' },
     }) as Promise<ProviderApiRequestRow[]>;
   }
+
+  /**
+   * Real call counts per third-party listing since a given time — the
+   * marketplace storefront's "Trending" signal (Phase 10). Grouped in one
+   * query rather than one count per listing.
+   */
+  async countsByListingIds(listingIds: string[], since: Date): Promise<Map<string, number>> {
+    if (listingIds.length === 0) return new Map();
+    const rows = await this.prisma.apiRequest.groupBy({
+      by: ['listingId'],
+      where: { listingId: { in: listingIds }, createdAt: { gte: since } },
+      _count: { _all: true },
+    });
+    return new Map(rows.filter((r) => r.listingId !== null).map((r) => [r.listingId as string, r._count._all]));
+  }
+
+  /**
+   * Same as `countsByListingIds`, but for first-party endpoints, which are
+   * identified by `route` (matching `MarketplaceApi.endpoint`) rather than
+   * `listingId` — first-party traffic never sets `listingId`, so this is
+   * explicitly scoped to `listingId: null` to avoid any chance of double
+   * counting against a third-party listing that happened to share a route
+   * string.
+   */
+  async countsByRoutes(routes: string[], since: Date): Promise<Map<string, number>> {
+    if (routes.length === 0) return new Map();
+    const rows = await this.prisma.apiRequest.groupBy({
+      by: ['route'],
+      where: { route: { in: routes }, listingId: null, createdAt: { gte: since } },
+      _count: { _all: true },
+    });
+    return new Map(rows.map((r) => [r.route, r._count._all]));
+  }
 }

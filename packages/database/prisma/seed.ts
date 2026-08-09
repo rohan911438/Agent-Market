@@ -99,12 +99,14 @@ async function main() {
     });
   }
 
+  let analyzeApi: { id: string } | undefined;
   for (const api of MARKETPLACE_APIS) {
-    await prisma.marketplaceApi.upsert({
+    const created = await prisma.marketplaceApi.upsert({
       where: { slug: api.slug },
       update: api,
       create: api,
     });
+    if (api.slug === 'analyze') analyzeApi = created;
   }
 
   // One demo third-party provider + published listing, so a freshly-seeded
@@ -123,7 +125,7 @@ async function main() {
     },
   });
 
-  await prisma.apiListing.upsert({
+  const demoListing = await prisma.apiListing.upsert({
     where: { slug: 'chainscan-wallet-risk' },
     update: {},
     create: {
@@ -144,8 +146,25 @@ async function main() {
     },
   });
 
+  // A "Featured" shelf (Phase 10) so a freshly-seeded dev server shows the
+  // storefront's curated-collection mechanism actually working, not an
+  // empty section. Admin/operator-curated only — see Collection's schema comment.
+  if (analyzeApi) {
+    await prisma.collection.upsert({
+      where: { slug: 'featured' },
+      update: {},
+      create: {
+        slug: 'featured',
+        name: 'Featured',
+        description: 'Hand-picked endpoints worth trying first.',
+        listingIds: JSON.stringify([analyzeApi.id, demoListing.id]),
+        position: 0,
+      },
+    });
+  }
+
   console.log(
-    `Seeded ${PROVIDERS.length} providers, ${MARKETPLACE_APIS.length} marketplace APIs, and 1 demo third-party listing.`,
+    `Seeded ${PROVIDERS.length} providers, ${MARKETPLACE_APIS.length} marketplace APIs, 1 demo third-party listing, and 1 featured collection.`,
   );
 }
 
