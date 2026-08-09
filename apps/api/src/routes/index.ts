@@ -8,6 +8,7 @@ import { registerFirstPartyCatalogRoutes } from './catalog/first-party-catalog.r
 import { registerListingCatalogRoutes } from './catalog/listing-catalog.route.js';
 import { registerMcpRoutes } from './catalog/mcp.route.js';
 import { registerSwaggerUiAssets } from './catalog/swagger-ui.js';
+import { registerProviderAnalyticsRoutes } from './control-plane/analytics.route.js';
 import { registerListingRoutes } from './control-plane/listings.route.js';
 import { registerProviderAccountRoutes } from './control-plane/provider-account.route.js';
 import { registerProviderRevenueRoutes } from './control-plane/revenue.route.js';
@@ -37,6 +38,9 @@ export function registerRoutes(server: FastifyInstance, ctx: AppContext): void {
 
   // Trust & verification ladder — admin-only actions (Phase 8)
   registerProviderVerificationAdminRoutes(server, ctx);
+
+  // Analytics — provider-facing operational dashboard (Phase 9)
+  registerProviderAnalyticsRoutes(server, ctx);
 
   // Protocol-native catalog — OpenAPI/Swagger/Postman/MCP (Phase 4)
   registerSwaggerUiAssets(server);

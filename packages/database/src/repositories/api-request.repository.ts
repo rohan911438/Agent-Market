@@ -1,4 +1,4 @@
-import type { ApiRequest, PrismaClient } from '@prisma/client';
+import type { ApiRequest, PrismaClient, Wallet } from '@prisma/client';
 
 export interface CreateApiRequestInput {
   requestId: string;
@@ -17,6 +17,8 @@ export interface CreateApiRequestInput {
   listingId?: string;
 }
 
+export type ProviderApiRequestRow = ApiRequest & { wallet: Wallet | null };
+
 export class ApiRequestRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
@@ -34,5 +36,25 @@ export class ApiRequestRepository {
       orderBy: { createdAt: 'desc' },
       take: limit,
     });
+  }
+
+  /**
+   * Every request against a provider's own listings since a given time —
+   * the source rows for the analytics dashboard (Phase 9). Reuses the same
+   * `listingId` column Phase 7 added for revenue attribution rather than a
+   * parallel tracking mechanism. Wallet is included directly (not a second
+   * round trip) so callers can group by `wallet.address` for "top customers"
+   * without an N+1 query.
+   */
+  findForProvider(providerAccountId: string, since: Date, listingId?: string): Promise<ProviderApiRequestRow[]> {
+    return this.prisma.apiRequest.findMany({
+      where: {
+        listingId: listingId ?? { not: null },
+        listing: { providerAccountId },
+        createdAt: { gte: since },
+      },
+      include: { wallet: true },
+      orderBy: { createdAt: 'asc' },
+    }) as Promise<ProviderApiRequestRow[]>;
   }
 }

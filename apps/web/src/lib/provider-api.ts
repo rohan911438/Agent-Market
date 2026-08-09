@@ -1,4 +1,6 @@
 import type {
+  AnalyticsRange,
+  AnalyticsSummaryView,
   ApiListingView,
   ConfigurePaymentRequest,
   ConfigurePricingRequest,
@@ -63,6 +65,10 @@ export function publishListing(apiKey: string, id: string) {
 
 export function getProviderRevenue(apiKey: string) {
   return callApi<RevenueSummaryView>('/v1/providers/me/revenue', { authorization: apiKey });
+}
+
+export function getProviderAnalytics(apiKey: string, range: AnalyticsRange = '24h') {
+  return callApi<AnalyticsSummaryView>(`/v1/providers/me/analytics?range=${range}`, { authorization: apiKey });
 }
 
 export function errorMessage(body: unknown, fallback = 'Something went wrong.'): string {
