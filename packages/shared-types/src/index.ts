@@ -4,6 +4,7 @@ export * from './catalog.js';
 export * from './collections.js';
 export * from './common.js';
 export * from './control-plane.js';
+export * from './discovery.js';
 export * from './errors.js';
 export * from './payment.js';
 export * from './marketplace.js';

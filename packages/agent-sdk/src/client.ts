@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import type { PaymentRequiredResponse } from '@agentmarket/shared-types';
 import { Budget } from './budget.js';
+import { searchCapabilities } from './capability-search.js';
 import { estimateCost } from './cost-estimator.js';
 import { discoverListings } from './discovery.js';
 import { AllProvidersFailedError, HttpError, UnsupportedPaymentSchemeError } from './errors.js';
@@ -13,6 +14,8 @@ import type {
   AgentMarketClientConfig,
   CallOptions,
   CallParams,
+  CapabilitySearchQuery,
+  CapabilitySearchResult,
   CostEstimate,
   DiscoverQuery,
   MarketplaceListing,
@@ -152,6 +155,11 @@ export class AgentMarketClient {
   /** Filters the public catalog — see discovery.ts. */
   discover(query?: DiscoverQuery): Promise<MarketplaceListing[]> {
     return discoverListings(this.fetchImpl, this.baseUrl, query);
+  }
+
+  /** Ranked discovery against a free-text task description — see capability-search.ts. */
+  findCapability(query: CapabilitySearchQuery): Promise<CapabilitySearchResult[]> {
+    return searchCapabilities(this.fetchImpl, this.baseUrl, query);
   }
 
   getUsageSummary(): UsageSummary {

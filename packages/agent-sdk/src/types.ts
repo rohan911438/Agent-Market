@@ -122,3 +122,25 @@ export interface DiscoverQuery {
   /** Case-insensitive substring match against name + description. */
   search?: string;
 }
+
+/**
+ * State a job in natural language instead of constructing a keyword query —
+ * `agent.findCapability({ task, constraints })`, wrapping POST /v1/discover
+ * (Phase 11). See apps/api/src/services/discovery-ranking.ts for the
+ * documented, inspectable scoring formula behind the ranking.
+ */
+export interface CapabilitySearchQuery {
+  task: string;
+  constraints?: {
+    maxLatencyMs?: number;
+    maxCostPerCall?: number;
+  };
+}
+
+export interface CapabilitySearchResult {
+  listing: MarketplaceListing;
+  /** Higher is a better match — see discovery-ranking.ts for the exact formula. */
+  score: number;
+  /** Why this listing scored the way it did (e.g. "matches keywords: wallet, risk", "provider trust score: 80/100") — never a bare unexplained number. */
+  reasons: string[];
+}
