@@ -24,6 +24,7 @@ import { registerRiskAnalysisRoute } from './risk-analysis.route.js';
 import { registerSentimentRoute } from './sentiment.route.js';
 import { registerTechnicalSummaryRoute } from './technical-summary.route.js';
 import { registerTrendingAssetsRoute } from './trending-assets.route.js';
+import { registerWorkflowRoutes } from './workflows.route.js';
 
 export function registerRoutes(server: FastifyInstance, ctx: AppContext): void {
   // Free
@@ -67,4 +68,7 @@ export function registerRoutes(server: FastifyInstance, ctx: AppContext): void {
   registerTrendingAssetsRoute(server, ctx);
   registerPortfolioHealthRoute(server, ctx);
   registerExecutionReadinessRoute(server, ctx);
+
+  // Orchestration Engine — multi-step pipelines over the endpoints above (Phase 12)
+  registerWorkflowRoutes(server, ctx);
 }

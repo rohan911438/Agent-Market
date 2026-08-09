@@ -36,10 +36,26 @@ const REPLAY_CACHE_TTL_SECONDS = 24 * 60 * 60;
  *      both settle.
  *   5. On success, the wallet is marked verified (promotes its rate-limit
  *      tier) and `request.paymentContext` is populated for downstream use.
+ *
+ * `meta` is normally a fixed object (every metered route today has a static
+ * price known at registration time). It can also be an async resolver run
+ * once per request — the one caller that needs this is the workflow engine
+ * (routes/workflows.route.ts, Phase 12), whose total price depends on which
+ * steps were requested and isn't known until the request body is parsed.
+ * The resolver runs unconditionally, before the payment-header check, so a
+ * resolver that validates its input (e.g. rejects an invalid pipeline) and
+ * throws does so *before* any payment is taken — same "fail free" ordering
+ * register-metered-route.ts's preValidation already guarantees for query/body
+ * schemas. This is purely about *how* `{resource, priceUsd}` is obtained —
+ * every verify/settle/replay/audit step below is completely unchanged.
  */
-export function createX402PreHandler(ctx: AppContext, meta: MeteredRouteMeta) {
+export function createX402PreHandler(
+  ctx: AppContext,
+  meta: MeteredRouteMeta | ((request: FastifyRequest) => Promise<MeteredRouteMeta>),
+) {
   return async function x402PreHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
-    const { body: requiredBody, requirement } = ctx.paymentService.buildPaymentRequired(meta.resource, meta.priceUsd);
+    const resolvedMeta = typeof meta === 'function' ? await meta(request) : meta;
+    const { body: requiredBody, requirement } = ctx.paymentService.buildPaymentRequired(resolvedMeta.resource, resolvedMeta.priceUsd);
     const header = headerValue(request.headers['x-payment']);
 
     const incoming = await ctx.paymentService.processIncomingPayment(header, requirement);
@@ -56,7 +72,7 @@ export function createX402PreHandler(ctx: AppContext, meta: MeteredRouteMeta) {
       await ctx.db.auditLogs.record({
         actorType: 'wallet',
         action: 'payment.verification_failed',
-        metadata: { resource: meta.resource, reason: incoming.reason },
+        metadata: { resource: resolvedMeta.resource, reason: incoming.reason },
       });
       throw new AppError('PAYMENT_VERIFICATION_FAILED', incoming.reason ?? 'Payment could not be verified', 402);
     }
@@ -94,13 +110,13 @@ export function createX402PreHandler(ctx: AppContext, meta: MeteredRouteMeta) {
     try {
       await ctx.db.payments.create({
         paymentRef,
-        resource: meta.resource,
+        resource: resolvedMeta.resource,
         amountAtomic: requirement.maxAmountRequired,
         asset: requirement.asset,
         network: requirement.network,
         scheme: requirement.scheme,
         walletId,
-        listingId: meta.listingId,
+        listingId: resolvedMeta.listingId,
       });
     } catch (err) {
       const isUniqueConstraintViolation =
@@ -120,7 +136,7 @@ export function createX402PreHandler(ctx: AppContext, meta: MeteredRouteMeta) {
         actorType: 'wallet',
         actorId: payerAddress,
         action: 'payment.failed',
-        metadata: { resource: meta.resource, paymentRef, reason: settleResult.errorReason },
+        metadata: { resource: resolvedMeta.resource, paymentRef, reason: settleResult.errorReason },
       });
       throw new AppError('PAYMENT_VERIFICATION_FAILED', settleResult.errorReason ?? 'Settlement failed', 402);
     }
@@ -129,7 +145,7 @@ export function createX402PreHandler(ctx: AppContext, meta: MeteredRouteMeta) {
       actorType: 'wallet',
       actorId: payerAddress,
       action: 'payment.settled',
-      metadata: { resource: meta.resource, paymentRef, transactionId: settleResult.transactionId },
+      metadata: { resource: resolvedMeta.resource, paymentRef, transactionId: settleResult.transactionId },
     });
 
     if (walletId && payerAddress) {
@@ -144,7 +160,7 @@ export function createX402PreHandler(ctx: AppContext, meta: MeteredRouteMeta) {
       requirement,
       transactionId: settleResult.transactionId,
       walletId,
-      listingId: meta.listingId,
+      listingId: resolvedMeta.listingId,
     };
   };
 }
