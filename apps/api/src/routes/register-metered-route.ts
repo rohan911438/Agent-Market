@@ -3,6 +3,7 @@ import type { ZodType } from 'zod';
 import type { AppContext } from '../context.js';
 import { createRateLimitPreHandler } from '../middleware/rate-limit.js';
 import { createX402PreHandler, REPLAY_CACHE_TTL_SECONDS } from '../middleware/x402-payment.js';
+import { tracedHandler, tracedPreHandler } from '../observability/tracing.js';
 
 export interface MeteredHandlerResult<TResult> {
   body: TResult;
@@ -53,8 +54,11 @@ export function registerMeteredRoute<TQuery = undefined, TBody = undefined, TRes
         body: bodySchema ? bodySchema.parse(request.body) : undefined,
       };
     },
-    preHandler: [createRateLimitPreHandler(ctx), createX402PreHandler(ctx, { resource, priceUsd, listingId })],
-    handler: async (request, reply) => {
+    preHandler: [
+      tracedPreHandler('rate_limit.check', createRateLimitPreHandler(ctx)),
+      tracedPreHandler('payment.gate', createX402PreHandler(ctx, { resource, priceUsd, listingId })),
+    ],
+    handler: tracedHandler('handler', async (request, reply) => {
       const query = request.validated?.query as TQuery;
       const body = request.validated?.body as TBody;
 
@@ -66,7 +70,7 @@ export function registerMeteredRoute<TQuery = undefined, TBody = undefined, TRes
       // treating the handler's own promise resolution as a second,
       // phantom send — which otherwise races the real one through onSend.
       return reply.code(200).send(result.body);
-    },
+    }),
     onSend: [
       async (request: FastifyRequest, reply: FastifyReply, payload: unknown) => {
         const paymentContext = request.paymentContext;

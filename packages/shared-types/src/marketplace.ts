@@ -29,6 +29,8 @@ export const MarketplaceApiSchema = z.object({
   /** Schema placeholder only (Phase 10) — no review submission flow exists yet. Null means "no rating data", not a fabricated 0-star average. */
   avgRating: z.number().min(0).max(5).nullable(),
   reviewCount: z.number().int().nonnegative(),
+  /** Rolling 90-day uptime percentage, blending real traffic and synthetic checks (see services/availability.ts, Phase 13). Null means no data yet, never a fabricated 100%. */
+  availabilityPct: z.number().min(0).max(100).nullable(),
 });
 export type MarketplaceApi = z.infer<typeof MarketplaceApiSchema>;
 
