@@ -1,4 +1,8 @@
-# AgentMarket
+<p align="center">
+  <img src="docs/assets/logo.png" alt="AgentMarket logo" width="120" height="120">
+</p>
+
+<h1 align="center">AgentMarket</h1>
 
 **x402-native marketplace for premium AI financial-intelligence APIs, settled on Algorand.**
 
