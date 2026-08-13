@@ -35,6 +35,7 @@ The API explains **why**.
 |---|---|
 | API (Render) | [agentmarket-api-bedc.onrender.com](https://agentmarket-api-bedc.onrender.com) — [`/health`](https://agentmarket-api-bedc.onrender.com/health) |
 | Web (Vercel) | [agentmarket-web-rohans-projects-cd679a85.vercel.app](https://agentmarket-web-rohans-projects-cd679a85.vercel.app) |
+| Pitch deck | [Google Slides](https://docs.google.com/presentation/d/1B5JbqAXSVYPB3MJI0PZcd3iT6QftsqVr9PQTgDdcW04/edit?usp=sharing) |
 
 The API runs on Render's free plan (Docker, SQLite on ephemeral disk — data resets on
 redeploy). The web app is a Vercel deployment of `apps/web`, pointed at the Render API via
@@ -343,6 +344,7 @@ agentmarket/
 - [Roadmap](docs/ROADMAP.md)
 - [Contributing](docs/CONTRIBUTING.md)
 - [Pitch script](docs/PITCH_SCRIPT.md)
+- [Pitch deck prompt](docs/PITCH_DECK.md) · [Slides](https://docs.google.com/presentation/d/1B5JbqAXSVYPB3MJI0PZcd3iT6QftsqVr9PQTgDdcW04/edit?usp=sharing)
 
 ## Tech stack
 
