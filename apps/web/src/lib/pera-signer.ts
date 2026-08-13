@@ -23,10 +23,19 @@ export function peraToClientAvmSigner(pera: PeraWalletConnect, address: string):
 
       const group = txns.map((bytes, i) => ({
         txn: algosdk.decodeUnsignedTransaction(bytes),
-        // An empty `signers` array tells Pera to skip this leg (e.g. the
-        // facilitator's fee-payer transaction) instead of attempting to sign
-        // it with the connected account.
-        signers: shouldSign(i) ? undefined : [],
+        // Must always be a non-empty array for legs we want signed, never
+        // `undefined`. `PeraWalletConnect.signTransaction`'s compiled bundle
+        // resolves each txn's `signers` as
+        // `Array.isArray(e.signers) ? e.signers : signerAddress && []` — so
+        // when we call `pera.signTransaction(group, address)` below (passing
+        // a truthy `address`), any txn left as `signers: undefined` is
+        // silently downgraded to `signers: []` (skip) by that fallback,
+        // instead of being left for the wallet to sign as the SDK's own
+        // type docs promise. Passing our own address explicitly for legs we
+        // want signed keeps us on the `Array.isArray` branch and avoids that
+        // fallback entirely. An empty array still tells Pera to skip a leg
+        // (e.g. the facilitator's fee-payer transaction).
+        signers: shouldSign(i) ? [address] : [],
       }));
 
       const signed = await pera.signTransaction([group], address);

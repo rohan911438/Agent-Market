@@ -26,6 +26,16 @@ const ApiEnvSchema = z
     // `extra.feePayer` from GET {facilitatorUrl}/supported) — needed so the
     // AVM "exact" v2 scheme can build its fee-sponsored atomic group.
     X402_FEE_PAYER_ADDRESS: z.string().optional(),
+    // Offers a second, native-ALGO PaymentRequirement alongside the primary
+    // stablecoin one (see algorand-x402-provider.ts's getRequirements()).
+    // Defaults OFF: the live GoPlausible facilitator's `exact` scheme
+    // verification requires the payment to be an ASA AssetTransfer and
+    // hard-rejects a plain native Payment transaction ("Payment transaction
+    // is not an asset transfer") — confirmed empirically against TestNet.
+    // The client-side signer and provider logic are fully built and correct;
+    // this flag exists so a future/alternate facilitator that does support
+    // native-currency settlement can turn it on without any code changes.
+    X402_ENABLE_NATIVE_ALGO: z.coerce.boolean().default(false),
 
     RATE_LIMIT_ANON_PER_MIN: z.coerce.number().int().positive().default(30),
     RATE_LIMIT_WALLET_PER_MIN: z.coerce.number().int().positive().default(300),
@@ -115,6 +125,7 @@ export interface ApiConfig {
     payToAddress?: string;
     usdcAssetId?: string;
     feePayerAddress?: string;
+    enableNativeAlgo: boolean;
   };
   rateLimits: {
     anonymousPerMinute: number;
@@ -150,6 +161,7 @@ export function loadApiConfig(source?: Record<string, string | undefined>): ApiC
       payToAddress: secrets.getOptional('X402_PAY_TO_ADDRESS'),
       usdcAssetId: secrets.getOptional('X402_USDC_ASSET_ID'),
       feePayerAddress: secrets.getOptional('X402_FEE_PAYER_ADDRESS'),
+      enableNativeAlgo: secrets.get('X402_ENABLE_NATIVE_ALGO'),
     },
     rateLimits: {
       anonymousPerMinute: secrets.get('RATE_LIMIT_ANON_PER_MIN'),

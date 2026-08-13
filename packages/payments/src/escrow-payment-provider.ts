@@ -45,18 +45,20 @@ export class EscrowPaymentProvider implements PaymentProvider {
   readonly id = 'workflow-escrow';
   readonly x402Version = 1;
 
-  getRequirements(context: PaymentContext): PaymentRequirement {
-    return {
-      scheme: 'workflow-escrow',
-      network: 'internal',
-      maxAmountRequired: Math.round(context.priceUsd * 1_000_000).toString(),
-      resource: context.resource,
-      description: `Internal escrow debit for ${context.resource} — settled from a workflow's upfront payment, never a standalone real payment.`,
-      mimeType: 'application/json',
-      payTo: 'INTERNAL_WORKFLOW_ESCROW',
-      asset: 'INTERNAL_USD',
-      maxTimeoutSeconds: 60,
-    };
+  getRequirements(context: PaymentContext): PaymentRequirement[] {
+    return [
+      {
+        scheme: 'workflow-escrow',
+        network: 'internal',
+        maxAmountRequired: Math.round(context.priceUsd * 1_000_000).toString(),
+        resource: context.resource,
+        description: `Internal escrow debit for ${context.resource} — settled from a workflow's upfront payment, never a standalone real payment.`,
+        mimeType: 'application/json',
+        payTo: 'INTERNAL_WORKFLOW_ESCROW',
+        asset: 'INTERNAL_USD',
+        maxTimeoutSeconds: 60,
+      },
+    ];
   }
 
   /** Always valid — see the class-level SECURITY comment for why that's safe here and only here. Arguments are accepted (matching PaymentProvider's shape) but never inspected. */

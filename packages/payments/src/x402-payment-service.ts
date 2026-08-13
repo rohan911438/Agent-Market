@@ -6,7 +6,14 @@ export type IncomingPaymentResult =
   | { kind: 'missing' }
   | { kind: 'malformed'; reason: string }
   | { kind: 'invalid'; reason?: string }
-  | { kind: 'verified'; payload: PaymentPayload; payerAddress?: string; paymentRef: string };
+  | {
+      kind: 'verified';
+      payload: PaymentPayload;
+      payerAddress?: string;
+      paymentRef: string;
+      /** Which accepts[] entry this payload matched — pass to settle() and to any bookkeeping that needs the actual amount/asset/network paid. */
+      requirement: PaymentRequirement;
+    };
 
 /**
  * Framework-agnostic x402 protocol logic — building the 402 body and
@@ -17,21 +24,29 @@ export type IncomingPaymentResult =
 export class X402PaymentService {
   constructor(private readonly provider: PaymentProvider) {}
 
-  buildPaymentRequired(resource: string, priceUsd: number): { body: PaymentRequiredResponse; requirement: PaymentRequirement } {
-    const requirement = this.provider.getRequirements({ resource, priceUsd });
+  buildPaymentRequired(
+    resource: string,
+    priceUsd: number,
+    algoUsdPrice?: number,
+  ): { body: PaymentRequiredResponse; requirements: PaymentRequirement[]; requirement: PaymentRequirement } {
+    const requirements = this.provider.getRequirements({ resource, priceUsd, algoUsdPrice });
     return {
       body: {
         x402Version: this.provider.x402Version,
         error: 'Payment required — see accepts[] for terms',
-        accepts: [requirement],
+        accepts: requirements,
       },
-      requirement,
+      requirements,
+      // Convenience default (accepts[0]) for callers that only ever deal in
+      // a single requirement — every provider that offers just one still
+      // works with this unchanged.
+      requirement: requirements[0]!,
     };
   }
 
   async processIncomingPayment(
     headerValue: string | undefined,
-    requirement: PaymentRequirement,
+    requirements: PaymentRequirement[],
   ): Promise<IncomingPaymentResult> {
     if (!headerValue) return { kind: 'missing' };
 
@@ -42,6 +57,11 @@ export class X402PaymentService {
       return { kind: 'malformed', reason: err instanceof Error ? err.message : 'invalid X-PAYMENT header' };
     }
 
+    // Which accepts[] entry this payload was built against — see
+    // PaymentPayloadSchema.asset. Falls back to the first (and for every
+    // provider that only ever offers one requirement, only) entry.
+    const requirement = (payload.asset ? requirements.find((r) => r.asset === payload.asset) : undefined) ?? requirements[0]!;
+
     const result = await this.provider.verify(payload, requirement);
     if (!result.isValid) return { kind: 'invalid', reason: result.invalidReason };
 
@@ -50,6 +70,7 @@ export class X402PaymentService {
       payload,
       payerAddress: result.payerAddress,
       paymentRef: result.paymentRef ?? this.fallbackRef(payload),
+      requirement,
     };
   }
 

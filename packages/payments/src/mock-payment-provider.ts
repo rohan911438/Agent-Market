@@ -19,18 +19,20 @@ export class MockPaymentProvider implements PaymentProvider {
   readonly id = 'mock';
   readonly x402Version = 1;
 
-  getRequirements(context: PaymentContext): PaymentRequirement {
-    return {
-      scheme: 'exact',
-      network: 'mock',
-      maxAmountRequired: Math.round(context.priceUsd * 1_000_000).toString(),
-      resource: context.resource,
-      description: `Access to ${context.resource} (mock payment provider — dev/test only)`,
-      mimeType: 'application/json',
-      payTo: 'MOCK_PAY_TO_ADDRESS',
-      asset: 'MOCK_USDC',
-      maxTimeoutSeconds: 60,
-    };
+  getRequirements(context: PaymentContext): PaymentRequirement[] {
+    return [
+      {
+        scheme: 'exact',
+        network: 'mock',
+        maxAmountRequired: Math.round(context.priceUsd * 1_000_000).toString(),
+        resource: context.resource,
+        description: `Access to ${context.resource} (mock payment provider — dev/test only)`,
+        mimeType: 'application/json',
+        payTo: 'MOCK_PAY_TO_ADDRESS',
+        asset: 'MOCK_USDC',
+        maxTimeoutSeconds: 60,
+      },
+    ];
   }
 
   async verify(payload: PaymentPayload): Promise<PaymentVerifyResult> {

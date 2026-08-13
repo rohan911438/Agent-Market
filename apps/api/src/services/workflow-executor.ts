@@ -217,7 +217,7 @@ async function settleStepFromEscrow(
   resource: string,
   priceUsd: number,
 ): Promise<void> {
-  const requirement = escrowProvider.getRequirements({ resource, priceUsd });
+  const requirement = escrowProvider.getRequirements({ resource, priceUsd })[0]!;
   const paymentRef = `${workflowPaymentRef}#step${stepIndex}`;
 
   await ctx.db.payments.create({
@@ -241,7 +241,7 @@ async function recordRefundedStep(
   resource: string,
   priceUsd: number,
 ): Promise<void> {
-  const requirement = escrowProvider.getRequirements({ resource, priceUsd });
+  const requirement = escrowProvider.getRequirements({ resource, priceUsd })[0]!;
   await ctx.db.payments.create({
     paymentRef: `${workflowPaymentRef}#step${stepIndex}`,
     resource,
