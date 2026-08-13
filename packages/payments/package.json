@@ -20,6 +20,6 @@
     "clean": "rimraf dist"
   },
   "dependencies": {
-    "@agentmarket/shared-types": "*"
+    "@rohankumar4179/shared-types": "*"
   }
 }

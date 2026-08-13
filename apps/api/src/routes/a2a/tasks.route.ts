@@ -6,7 +6,7 @@ import {
   A2ATaskIdParamsSchema,
   AppError,
   type A2ATask,
-} from '@agentmarket/shared-types';
+} from '@rohankumar4179/shared-types';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { ZodError } from 'zod';
 import type { AppContext } from '../../context.js';

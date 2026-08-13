@@ -1,4 +1,4 @@
-import type { PublishRequirement } from '@agentmarket/shared-types';
+import type { PublishRequirement } from '@rohankumar4179/shared-types';
 
 export interface PublishGateInput {
   providerAccountStatus: string;

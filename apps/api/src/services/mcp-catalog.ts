@@ -1,4 +1,4 @@
-import type { McpToolMetadata } from '@agentmarket/shared-types';
+import type { McpToolMetadata } from '@rohankumar4179/shared-types';
 import type { AppContext } from '../context.js';
 import { extractOperations, type OpenApiOperation } from './openapi-spec.js';
 import { FIRST_PARTY_ENDPOINTS, getFirstPartyOpenApiDocument } from './first-party-openapi.js';

@@ -1,4 +1,4 @@
-import type { AnalyzeResponse, ResponseMeta, SentimentLabel } from '@agentmarket/shared-types';
+import type { AnalyzeResponse, ResponseMeta, SentimentLabel } from '@rohankumar4179/shared-types';
 import type { Explanation } from '../explainers/explainer.interface.js';
 import type { MarketSnapshot, SignalScores } from '../types.js';
 import type { RecommendationResult } from './recommendation-engine.js';

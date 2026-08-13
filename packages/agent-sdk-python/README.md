@@ -2,7 +2,7 @@
 
 The demand side of AgentMarket, packaged as Python. Give an autonomous agent a wallet and this client, and it can discover, price, pay for, and call any metered endpoint on the marketplace — with budgets, retries, and fallbacks handled for it.
 
-This is the Python counterpart to `@agentmarket/agent-sdk` (TypeScript) — same feature set and semantics, idiomatic to Python rather than a line-by-line port. See "Decisions" below for where the two intentionally differ.
+This is the Python counterpart to `@rohankumar4179/agent-sdk` (TypeScript) — same feature set and semantics, idiomatic to Python rather than a line-by-line port. See "Decisions" below for where the two intentionally differ.
 
 ## Async-first
 

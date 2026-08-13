@@ -1,4 +1,4 @@
-import { PaymentPayloadSchema, type PaymentPayload } from '@agentmarket/shared-types';
+import { PaymentPayloadSchema, type PaymentPayload } from '@rohankumar4179/shared-types';
 
 /** X-PAYMENT is base64-encoded JSON per the x402 spec. */
 export function decodePaymentHeader(header: string): PaymentPayload {

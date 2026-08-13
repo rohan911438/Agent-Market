@@ -1,7 +1,6 @@
 {
-  "name": "@agentmarket/agent-sdk",
+  "name": "@rohankumar4179/agent-sdk",
   "version": "0.1.0",
-  "private": true,
   "type": "module",
   "description": "TypeScript client for autonomous agents calling AgentMarket's x402-metered APIs — automatic payment, budgets, retries, fallbacks, and usage tracking.",
   "main": "./dist/index.js",
@@ -12,6 +11,12 @@
       "default": "./dist/index.js"
     }
   },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "dev": "tsc -p tsconfig.json --watch",
@@ -21,7 +26,7 @@
     "clean": "rimraf dist"
   },
   "dependencies": {
-    "@agentmarket/shared-types": "*",
+    "@rohankumar4179/shared-types": "^0.1.0",
     "@x402-avm/avm": "^2.6.1",
     "algosdk": "^3.6.0"
   }

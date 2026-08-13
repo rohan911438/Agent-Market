@@ -10,7 +10,7 @@ import { Select } from '@/components/ui/select';
 import { callApi } from '@/lib/api-client';
 import { NATIVE_ALGO_ASSET, buildDemoPaymentHeader, buildRealAlgoPaymentHeader, buildRealPaymentHeader } from '@/lib/x402-client';
 import { useWallet } from '@/lib/wallet-context';
-import type { PaymentRequiredResponse, PaymentRequirement } from '@agentmarket/shared-types';
+import type { PaymentRequiredResponse, PaymentRequirement } from '@rohankumar4179/shared-types';
 import { AnimatePresence, motion } from 'framer-motion';
 import { AlertTriangle, ArrowRight, Hash, Send, ShieldCheck, Wallet, Zap } from 'lucide-react';
 import { useState } from 'react';

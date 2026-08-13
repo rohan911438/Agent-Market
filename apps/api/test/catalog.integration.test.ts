@@ -1,4 +1,4 @@
-import { McpManifestSchema } from '@agentmarket/shared-types';
+import { McpManifestSchema } from '@rohankumar4179/shared-types';
 import { ListToolsResultSchema } from '@modelcontextprotocol/sdk/types.js';
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';

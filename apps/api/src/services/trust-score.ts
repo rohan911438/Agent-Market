@@ -1,4 +1,4 @@
-import type { VerificationTier } from '@agentmarket/shared-types';
+import type { VerificationTier } from '@rohankumar4179/shared-types';
 import type { ProviderAccount } from '@prisma/client';
 import type { AppContext } from '../context.js';
 

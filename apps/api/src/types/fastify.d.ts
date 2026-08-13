@@ -1,7 +1,7 @@
 import 'fastify';
 import type { Span } from '@opentelemetry/api';
 import type { ProviderAccount } from '@prisma/client';
-import type { ErrorCode, PaymentPayload, PaymentRequirement, WorkflowStepInput } from '@agentmarket/shared-types';
+import type { ErrorCode, PaymentPayload, PaymentRequirement, WorkflowStepInput } from '@rohankumar4179/shared-types';
 
 declare module 'fastify' {
   interface FastifyRequest {

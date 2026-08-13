@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { PaymentRequiredResponse } from '@agentmarket/shared-types';
+import type { PaymentRequiredResponse } from '@rohankumar4179/shared-types';
 import { Budget } from './budget.js';
 import { searchCapabilities } from './capability-search.js';
 import { estimateCost } from './cost-estimator.js';

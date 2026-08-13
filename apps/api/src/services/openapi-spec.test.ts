@@ -1,4 +1,4 @@
-import { AppError } from '@agentmarket/shared-types';
+import { AppError } from '@rohankumar4179/shared-types';
 import { describe, expect, it } from 'vitest';
 import { extractOperations, parseOpenApiSpec } from './openapi-spec.js';
 

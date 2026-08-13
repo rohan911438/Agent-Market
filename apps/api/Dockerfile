@@ -4,9 +4,17 @@ WORKDIR /repo
 RUN apt-get update -y && apt-get install -y --no-install-recommends openssl && rm -rf /var/lib/apt/lists/*
 
 # ---- deps: production-only install (no devDependencies, no build tooling) ----
+# Every workspace's package.json must be present (not just the ones apps/api
+# actually depends on) — npm ci reconciles against the *full* root
+# package-lock.json, and with only a subset of workspaces on disk it silently
+# produces an incomplete install (observed: apps/api's own `js-yaml`
+# dependency missing from both the hoisted and nested node_modules, because
+# npm couldn't fully resolve the workspace graph).
 FROM base AS deps
 COPY package.json package-lock.json turbo.json tsconfig.base.json ./
 COPY apps/api/package.json ./apps/api/package.json
+COPY apps/web/package.json ./apps/web/package.json
+COPY packages/agent-sdk/package.json ./packages/agent-sdk/package.json
 COPY packages/cache/package.json ./packages/cache/package.json
 COPY packages/config/package.json ./packages/config/package.json
 COPY packages/database/package.json ./packages/database/package.json
@@ -36,6 +44,13 @@ RUN groupadd --system appuser && useradd --system --gid appuser --home /repo app
 # the `prisma` devDependency, which `deps` deliberately excludes).
 COPY --from=deps /repo/node_modules ./node_modules
 COPY --from=build /repo/node_modules/.prisma ./node_modules/.prisma
+# The `prisma` CLI itself (not just the generated @prisma/client) — needed at
+# boot to run `prisma migrate deploy` before the server starts serving
+# traffic. Installed fresh here (not copied from `build`) so its own
+# transitive deps resolve cleanly instead of relying on `build`'s hoisted
+# node_modules layout.
+RUN npm install --no-save prisma@6.1.0
+COPY --from=build /repo/packages/database/prisma ./packages/database/prisma
 
 COPY --from=build /repo/apps/api/package.json ./apps/api/package.json
 COPY --from=build /repo/apps/api/dist ./apps/api/dist
@@ -57,8 +72,16 @@ COPY --from=build /repo/packages/secrets/dist ./packages/secrets/dist
 COPY --from=build /repo/packages/shared-types/package.json ./packages/shared-types/package.json
 COPY --from=build /repo/packages/shared-types/dist ./packages/shared-types/dist
 
+COPY apps/api/docker-entrypoint.sh ./docker-entrypoint.sh
+RUN chmod +x ./docker-entrypoint.sh
+
+# Every COPY above defaults to root:root ownership — appuser needs write
+# access to /repo itself (not just execute) to create the SQLite file
+# DATABASE_URL points at (file:./prod.db, no volume mounted).
+RUN chown -R appuser:appuser /repo
+
 USER appuser
 EXPOSE 4000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
   CMD node -e "fetch('http://localhost:4000/health').then((r) => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
-CMD ["node", "apps/api/dist/main.js"]
+CMD ["./docker-entrypoint.sh"]

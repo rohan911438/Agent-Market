@@ -1,6 +1,6 @@
 import { ExactAvmScheme, toClientAvmSigner, type ClientAvmSigner } from '@x402-avm/avm';
 import algosdk from 'algosdk';
-import type { PaymentPayload, PaymentRequirement } from '@agentmarket/shared-types';
+import type { PaymentPayload, PaymentRequirement } from '@rohankumar4179/shared-types';
 import type { PaymentScheme } from '../types.js';
 
 export interface AlgorandPaymentSchemeConfig {

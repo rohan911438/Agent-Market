@@ -4,7 +4,7 @@ import {
   ConfigurePricingRequestSchema,
   CreateListingRequestSchema,
   type ApiListingView,
-} from '@agentmarket/shared-types';
+} from '@rohankumar4179/shared-types';
 import type { ApiListing } from '@prisma/client';
 import type { FastifyInstance } from 'fastify';
 import type { AppContext } from '../../context.js';

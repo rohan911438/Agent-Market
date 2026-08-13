@@ -11,7 +11,7 @@ import {
   TechnicalSummaryResponseSchema,
   TimeframeSchema,
   TrendingAssetsResponseSchema,
-} from '@agentmarket/shared-types';
+} from '@rohankumar4179/shared-types';
 import type { OpenAPIObject } from 'openapi3-ts/oas30';
 import { z, type ZodObject, type ZodRawShape, type ZodType } from 'zod';
 

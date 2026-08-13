@@ -1,4 +1,4 @@
-import type { RiskLevel } from '@agentmarket/shared-types';
+import type { RiskLevel } from '@rohankumar4179/shared-types';
 import type { SignalScores } from '../types.js';
 import { clamp } from '../utils.js';
 

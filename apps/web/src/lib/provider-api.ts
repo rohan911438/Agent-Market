@@ -10,7 +10,7 @@ import type {
   RegisterProviderRequest,
   RegisterProviderResponse,
   RevenueSummaryView,
-} from '@agentmarket/shared-types';
+} from '@rohankumar4179/shared-types';
 import { callApi } from './api-client';
 
 /** Thin, typed wrappers over the control-plane endpoints — see apps/api/src/routes/control-plane/. */

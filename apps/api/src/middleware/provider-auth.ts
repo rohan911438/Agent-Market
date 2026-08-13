@@ -1,4 +1,4 @@
-import { AppError } from '@agentmarket/shared-types';
+import { AppError } from '@rohankumar4179/shared-types';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { AppContext } from '../context.js';
 import { hashApiKey } from '../services/provider-api-key.js';

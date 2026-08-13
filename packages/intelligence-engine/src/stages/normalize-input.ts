@@ -1,4 +1,4 @@
-import { SymbolSchema, TimeframeSchema } from '@agentmarket/shared-types';
+import { SymbolSchema, TimeframeSchema } from '@rohankumar4179/shared-types';
 import { z } from 'zod';
 
 const NormalizeInputSchema = z.object({

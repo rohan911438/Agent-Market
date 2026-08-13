@@ -3,7 +3,7 @@ import type {
   PaymentRequirement,
   PaymentSettleResult,
   PaymentVerifyResult,
-} from '@agentmarket/shared-types';
+} from '@rohankumar4179/shared-types';
 
 export interface PaymentContext {
   /** Route path being metered, e.g. "/v1/analyze". */

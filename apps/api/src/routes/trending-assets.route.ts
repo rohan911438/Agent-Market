@@ -1,5 +1,5 @@
 import { buildCacheKey, ttlFor } from '@agentmarket/cache';
-import { TrendingAssetsResponseSchema, type TrendingAssetsResponse } from '@agentmarket/shared-types';
+import { TrendingAssetsResponseSchema, type TrendingAssetsResponse } from '@rohankumar4179/shared-types';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import type { AppContext } from '../context.js';

@@ -1,4 +1,4 @@
-import type { Action } from '@agentmarket/shared-types';
+import type { Action } from '@rohankumar4179/shared-types';
 import type { SignalScores } from '../types.js';
 
 export interface RecommendationResult {

@@ -1,9 +1,9 @@
-# @agentmarket/agent-sdk
+# @rohankumar4179/agent-sdk
 
 The demand side of AgentMarket, packaged as code. Give an autonomous agent a wallet and this client, and it can discover, price, pay for, and call any metered endpoint on the marketplace — with budgets, retries, and fallbacks handled for it.
 
 ```ts
-import { AgentMarketClient, createMockPaymentScheme } from '@agentmarket/agent-sdk';
+import { AgentMarketClient, createMockPaymentScheme } from '@rohankumar4179/agent-sdk';
 
 const agent = new AgentMarketClient({
   baseUrl: 'https://api.agentmarket.dev',
@@ -24,7 +24,7 @@ No API key. No subscription. The 402 → pay → 200 loop runs inside `.call()`;
 Inside this monorepo:
 
 ```bash
-npm install --workspace=@agentmarket/agent-sdk
+npm install --workspace=@rohankumar4179/agent-sdk
 ```
 
 ## Quickstart
@@ -34,14 +34,14 @@ npm install --workspace=@agentmarket/agent-sdk
 **Local dev / CI** — pairs with an AgentMarket server running `PAYMENT_PROVIDER=mock`. No funds, no network calls to a facilitator:
 
 ```ts
-import { createMockPaymentScheme } from '@agentmarket/agent-sdk';
+import { createMockPaymentScheme } from '@rohankumar4179/agent-sdk';
 const paymentScheme = createMockPaymentScheme();
 ```
 
 **Real settlement** — signs and pays with an actual Algorand account. Needs network access to an Algod node (defaults to AlgoNode's public endpoint) and a funded TestNet/MainNet account:
 
 ```ts
-import { createAlgorandPaymentScheme } from '@agentmarket/agent-sdk';
+import { createAlgorandPaymentScheme } from '@rohankumar4179/agent-sdk';
 const paymentScheme = createAlgorandPaymentScheme({ mnemonic: process.env.AGENT_MNEMONIC! });
 ```
 
@@ -160,9 +160,9 @@ console.log(best.listing.name, best.score, best.reasons);
 ## Development
 
 ```bash
-npm run build --workspace=@agentmarket/agent-sdk
-npm run test --workspace=@agentmarket/agent-sdk
-npm run lint --workspace=@agentmarket/agent-sdk
+npm run build --workspace=@rohankumar4179/agent-sdk
+npm run test --workspace=@rohankumar4179/agent-sdk
+npm run lint --workspace=@rohankumar4179/agent-sdk
 ```
 
 Tests run against `src/test-helpers/fake-server.ts`, a `fetch`-compatible fake that implements the same 402/`X-PAYMENT` contract the real server does — no live server needed. The orchestration logic (retries, budgets, fallbacks, caching, events) is exercised there directly; `AlgorandPaymentScheme`'s actual transaction signing is delegated to `@x402-avm/avm` and isn't re-tested here.

@@ -1,4 +1,4 @@
-import type { ProviderAccountView } from '@agentmarket/shared-types';
+import type { ProviderAccountView } from '@rohankumar4179/shared-types';
 import type { ProviderAccount } from '@prisma/client';
 import type { ProviderTrustSummary } from './trust-score.js';
 

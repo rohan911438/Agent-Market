@@ -1,4 +1,4 @@
-import type { PayoutView, RevenueListingBreakdown, RevenueSummaryView } from '@agentmarket/shared-types';
+import type { PayoutView, RevenueListingBreakdown, RevenueSummaryView } from '@rohankumar4179/shared-types';
 import type { Payout } from '@prisma/client';
 import type { FastifyInstance } from 'fastify';
 import type { AppContext } from '../../context.js';
