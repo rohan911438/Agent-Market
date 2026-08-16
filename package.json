@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "AgentMarket — x402-native marketplace for premium AI/financial-intelligence APIs on Algorand",
+  "license": "MIT",
   "workspaces": [
     "apps/*",
     "packages/*"

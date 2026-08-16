@@ -365,4 +365,8 @@ See [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md).
 
 ## License
 
+[MIT](LICENSE) © Rohan Kumar
+
+## License
+
 Unlicensed — internal MVP.
