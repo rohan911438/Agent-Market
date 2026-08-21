@@ -34,10 +34,18 @@ export async function callApi<T = unknown>(path: string, options: CallApiOptions
   if (options.walletToken) headers['x-wallet-token'] = options.walletToken;
   if (options.authorization) headers.authorization = `Bearer ${options.authorization}`;
 
+  // Without a timeout, a hung backend (or a facilitator outage stalling a
+  // payment call upstream) leaves the UI waiting forever with no feedback.
+  // 45s: comfortably above the server's own worst case for a paid request --
+  // FACILITATOR_TIMEOUT_MS (20s) can apply once for verify and again for
+  // settle, sequentially, in algorand-x402-provider.ts -- so this stays a
+  // client-side safety net rather than something that could fire before a
+  // legitimately slow-but-succeeding server response comes back.
   const res = await fetch(`${config.apiUrl}${path}`, {
     method: options.method ?? 'GET',
     headers,
     body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+    signal: AbortSignal.timeout(45_000),
   });
 
   const body = (await res.json().catch(() => ({}))) as T;
