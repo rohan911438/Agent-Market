@@ -166,7 +166,22 @@ export function createX402PreHandler(
       );
     }
 
-    const settleResult = await ctx.paymentService.settle(payload, requirement);
+    // A thrown error (e.g. the facilitator call timing out — see
+    // FACILITATOR_TIMEOUT_MS in algorand-x402-provider.ts) is treated exactly
+    // like a returned `{ success: false }`: either way the spend-cap
+    // reservation must be released and the payment marked failed, or a
+    // facilitator outage would silently strand reservations against wallets'
+    // daily caps forever.
+    let settleResult: Awaited<ReturnType<typeof ctx.paymentService.settle>>;
+    try {
+      settleResult = await ctx.paymentService.settle(payload, requirement);
+    } catch (err) {
+      settleResult = {
+        success: false,
+        network: requirement.network,
+        errorReason: err instanceof Error ? err.message : 'Settlement request failed',
+      };
+    }
     if (!settleResult.success) {
       if (walletId && reservedAtomic !== undefined) await ctx.db.wallets.releaseDailySpend(walletId, reservedAtomic);
       await ctx.db.payments.markFailed(paymentRef);
