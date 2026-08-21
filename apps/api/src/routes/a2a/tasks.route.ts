@@ -10,7 +10,6 @@ import {
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { ZodError } from 'zod';
 import type { AppContext } from '../../context.js';
-import { createRateLimitPreHandler } from '../../middleware/rate-limit.js';
 import { createX402PreHandler, REPLAY_CACHE_TTL_SECONDS } from '../../middleware/x402-payment.js';
 import { findFirstPartyTaskHandler } from '../../services/first-party-task-registry.js';
 import { buildCatalogTools } from '../../services/mcp-catalog.js';
@@ -48,7 +47,7 @@ class A2AError extends Error {
 export function registerA2ATaskRoutes(server: FastifyInstance, ctx: AppContext): void {
   const tasks = new Map<string, A2ATask>();
 
-  server.post('/a2a', { preHandler: createRateLimitPreHandler(ctx) }, async (request, reply) => {
+  server.post('/a2a', async (request, reply) => {
     const rpc = A2AJsonRpcRequestSchema.parse(request.body);
 
     let result: unknown;

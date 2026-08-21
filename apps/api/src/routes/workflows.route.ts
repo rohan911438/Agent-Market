@@ -1,7 +1,6 @@
 import { AppError, WorkflowExecuteRequestSchema, type WorkflowExecuteResponse } from '@rohankumar4179/shared-types';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import type { AppContext } from '../context.js';
-import { createRateLimitPreHandler } from '../middleware/rate-limit.js';
 import { createX402PreHandler, type MeteredRouteMeta } from '../middleware/x402-payment.js';
 import { executeWorkflow, probeWorkflowTotalPrice, validateWorkflowSteps } from '../services/workflow-executor.js';
 
@@ -15,8 +14,6 @@ const RESOURCE = '/v1/workflows/execute';
  * x402 gate used by every other route).
  */
 export function registerWorkflowRoutes(server: FastifyInstance, ctx: AppContext): void {
-  const requireRateLimit = createRateLimitPreHandler(ctx);
-
   /**
    * The workflow's total price isn't known at route-registration time (it
    * depends on which steps were requested) — this resolver runs once per
@@ -42,7 +39,7 @@ export function registerWorkflowRoutes(server: FastifyInstance, ctx: AppContext)
 
   server.post(
     RESOURCE,
-    { preHandler: [requireRateLimit, createX402PreHandler(ctx, resolveWorkflowMeta)] },
+    { preHandler: [createX402PreHandler(ctx, resolveWorkflowMeta)] },
     async (request, reply) => {
       // Guaranteed set: the preHandler only lets execution reach here after
       // a real payment settled (a missing/invalid payment sends its own
