@@ -6,6 +6,13 @@ on:
   pull_request:
     branches: [main]
 
+# Least privilege: neither job below writes to the repo, comments on PRs, or
+# uses any token-requiring write action -- both only need to read the code
+# they check out. Explicit here rather than relying on the org/repo's default
+# GITHUB_TOKEN scope, which may be broader than this workflow needs.
+permissions:
+  contents: read
+
 jobs:
   ci:
     runs-on: ubuntu-latest
