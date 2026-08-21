@@ -36,6 +36,15 @@ model Wallet {
   firstSeenAt DateTime @default(now())
   lastSeenAt  DateTime @updatedAt
 
+  /// Running total of this wallet's settled spend for the UTC day named by
+  /// dailySpendDate — an atomic counter (see WalletRepository.reserveDailySpend),
+  /// not a cache of Payment rows. Reserved *before* settlement so concurrent
+  /// requests can't each observe a stale sum and jointly blow past the daily
+  /// cap (the previous SELECT-sum-then-compare approach in x402-payment.ts
+  /// had exactly that race).
+  dailySpendAtomic BigInt   @default(0)
+  dailySpendDate   DateTime @default(now())
+
   payments    Payment[]
   apiRequests ApiRequest[]
   rateLimits  RateLimit[]

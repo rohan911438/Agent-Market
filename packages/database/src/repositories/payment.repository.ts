@@ -60,15 +60,6 @@ export class PaymentRepository {
     });
   }
 
-  /** Sum of settled spend for a wallet since a given timestamp — backs daily spend caps. */
-  async sumSettledSpendSince(walletId: string, since: Date): Promise<number> {
-    const rows = await this.prisma.payment.findMany({
-      where: { walletId, status: 'SETTLED', settledAt: { gte: since } },
-      select: { amountAtomic: true },
-    });
-    return rows.reduce((sum, row) => sum + Number(row.amountAtomic), 0);
-  }
-
   /**
    * Every settled payment attributed to one of a provider's own listings —
    * the source rows for the revenue dashboard's totals and per-listing
