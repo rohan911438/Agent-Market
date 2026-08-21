@@ -29,6 +29,44 @@ describe('rate limiting', () => {
   });
 });
 
+describe('rate limiting applies to free, unauthenticated routes too', () => {
+  let server: FastifyInstance;
+
+  beforeAll(async () => {
+    server = buildServer(buildTestContext({ rateLimits: { anonymousPerMinute: 2, walletVerifiedPerMinute: 2, dailySpendCapUsd: 1000 } }));
+    await server.ready();
+  });
+
+  afterAll(async () => {
+    await server.close();
+  });
+
+  it('rate-limits POST /v1/providers/register -- previously unrate-limited free provider-account spam', async () => {
+    const register = (email: string) =>
+      server.inject({
+        method: 'POST',
+        url: '/v1/providers/register',
+        payload: { name: 'Spam Test', email, walletAddress: 'C'.repeat(58) },
+      });
+
+    const first = await register('spam-1@ratelimit.test');
+    const second = await register('spam-2@ratelimit.test');
+    const third = await register('spam-3@ratelimit.test');
+
+    expect(first.statusCode).toBe(201);
+    expect(second.statusCode).toBe(201);
+    expect(third.statusCode).toBe(429);
+    expect(third.json().error.code).toBe('RATE_LIMITED');
+  });
+
+  it('does not rate-limit GET /health', async () => {
+    // Already consumed the anonymousPerMinute=2 bucket in the previous test
+    // (same IP, same server) -- /health must still succeed regardless.
+    const res = await server.inject({ method: 'GET', url: '/health' });
+    expect(res.statusCode).toBe(200);
+  });
+});
+
 describe('free routes', () => {
   let server: FastifyInstance;
 
