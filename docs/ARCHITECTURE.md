@@ -119,3 +119,26 @@ flowchart LR
     Api --> Facilitator
     Api --> Providers
 ```
+
+### Scalability notes
+
+- **Rate limiting and idempotency-cache state live in `ICache`** (`packages/cache`),
+  which is Redis-backed when `CACHE_DRIVER=redis` — the API is stateless across
+  instances for these concerns and can run behind a load balancer with more than one
+  replica. See [SECURITY.md](SECURITY.md) for why `CACHE_DRIVER=memory` (the default)
+  doesn't support that.
+- **The database is the actual scaling constraint today**, not the API process — see
+  [SECURITY.md](SECURITY.md#known-gaps-tracked-not-blocking-phase-1) for why the
+  shipped SQLite-in-container setup can't run more than one instance or survive a
+  redeploy, and [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md#migrating-sqlite--postgres)
+  for the migration path.
+- **The per-provider analytics query is O(request volume in the selected time
+  window)**, not O(1): `ApiRequestRepository.findForProvider` pulls every raw
+  `ApiRequest` row in range into Node so the caller can compute exact time-bucketed
+  counts and top-listing/top-customer breakdowns (`analytics.route.ts`) — those need
+  every row, so a naive `take` cap would silently truncate the numbers rather than
+  actually fix anything. Fine at today's traffic; a provider with a very high-volume
+  listing over a 30-day range will eventually need this replaced with DB-side
+  time-bucketed rollups (a `groupBy` on a truncated-timestamp column, or a
+  periodically-updated summary table) instead of raw-row aggregation in application
+  code.
