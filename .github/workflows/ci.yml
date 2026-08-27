@@ -17,7 +17,7 @@ jobs:
   ci:
     runs-on: ubuntu-latest
     env:
-      DATABASE_URL: file:./ci.db
+      DATABASE_URL: postgresql://agentmarket:agentmarket@localhost:5432/agentmarket
       REDIS_URL: redis://localhost:6379
     services:
       redis:
@@ -26,6 +26,19 @@ jobs:
           - 6379:6379
         options: >-
           --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: agentmarket
+          POSTGRES_PASSWORD: agentmarket
+          POSTGRES_DB: agentmarket
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U agentmarket"
           --health-interval 5s
           --health-timeout 3s
           --health-retries 5
@@ -51,9 +64,18 @@ jobs:
       - name: Generate Prisma client
         run: npm run db:generate
 
+      # Postgres can't diff a migrations directory in-memory the way SQLite
+      # could — it needs a real scratch DB to replay the migrations into.
+      # Reusing the service DB is fine here: this step runs before the test
+      # step, whose global-setup drops and recreates the schema anyway.
       - name: Check for Prisma schema drift
         working-directory: packages/database
-        run: npx prisma migrate diff --from-migrations prisma/migrations --to-schema-datamodel prisma/schema.prisma --exit-code
+        run: >-
+          npx prisma migrate diff
+          --from-migrations prisma/migrations
+          --to-schema-datamodel prisma/schema.prisma
+          --shadow-database-url "$DATABASE_URL"
+          --exit-code
 
       - name: Lint
         run: npm run lint
