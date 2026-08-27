@@ -38,10 +38,17 @@ The API explains **why**.
 | Pitch deck | [Google Slides](https://docs.google.com/presentation/d/1B5JbqAXSVYPB3MJI0PZcd3iT6QftsqVr9PQTgDdcW04/edit?usp=sharing) |
 | Demo video | [Watch on YouTube](https://youtu.be/sNN5gzBUaK8) |
 
-The API runs on Render's free plan (Docker, SQLite on ephemeral disk — data resets on
-redeploy). The web app is a Vercel deployment of `apps/web`, pointed at the Render API via
-`NEXT_PUBLIC_API_URL`. Both redeploy automatically on push to `main` — see
+The API runs on Render (Docker) backed by a managed Postgres (`render.yaml`
+provisions both). The web app is a Vercel deployment of `apps/web`, pointed at the Render
+API via `NEXT_PUBLIC_API_URL`. Both redeploy automatically on push to `main` — see
 [CI/CD & Deployment](#cicd--deployment) below.
+
+**[Global x402 Challenge](https://algorand.co/global-x402-challenge):** the API can run
+against Algorand **MainNet** with challenge attribution (`X402_CHALLENGE_TAG=x402-global-challenge`)
+and Bazaar discovery (`X402_BAZAAR_DISCOVERY=true`) — every metered endpoint self-catalogs
+in the [Bazaar](https://facilitator.goplausible.xyz/discovery/resources) after its first
+real settlement through the GoPlausible facilitator. See
+[docs/DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md#global-x402-challenge-algorand-mainnet).
 
 ## Status
 
@@ -73,7 +80,7 @@ flowchart LR
     end
     subgraph Render
         Api[apps/api — Fastify 5]
-        DB[(SQLite / Postgres)]
+        DB[(Postgres)]
     end
     subgraph External
         Facilitator[x402 Facilitator]
@@ -162,19 +169,21 @@ settlement), and the replay-protection mechanics: [docs/PAYMENT_FLOW.md](docs/PA
 git clone <this-repo>
 cd agentmarket
 npm install
+docker compose --profile postgres up -d postgres   # the datastore is Postgres
 npm run bootstrap   # copies .env.example -> .env, generates/migrates/seeds the DB
 
 npm run dev          # API on :4000, web on :3000, both hot-reloading
 ```
 
-No external API keys are required — every default market-data provider (CoinGecko,
-Binance, Alternative.me, DefiLlama) is keyless, and `PAYMENT_PROVIDER` defaults to an
-in-process mock so the full 402 → pay → 200 flow works immediately, including from the
-web app's API Explorer. See [docs/INSTALLATION.md](docs/INSTALLATION.md) for the real
-Algorand TestNet path.
+`DATABASE_URL` defaults to the local compose Postgres
+(`postgresql://agentmarket:agentmarket@localhost:5432/agentmarket`). No external API keys
+are required — every default market-data provider (CoinGecko, Binance, Alternative.me,
+DefiLlama) is keyless, and `PAYMENT_PROVIDER` defaults to an in-process mock so the full
+402 → pay → 200 flow works immediately, including from the web app's API Explorer. See
+[docs/INSTALLATION.md](docs/INSTALLATION.md) for the real Algorand TestNet / MainNet path.
 
-Optional local infra (`docker-compose.yml`) adds Redis and/or Postgres for parity with a
-scaled-up setup — not required for Phase 1 dev, which runs on SQLite + an in-memory cache.
+`docker-compose.yml` also provides Redis for `CACHE_DRIVER=redis` parity — optional for
+local dev, which defaults to an in-memory cache.
 
 ### CI/CD & Deployment
 
@@ -202,8 +211,8 @@ flowchart LR
   `apps/web/vercel.json` supplies install/build commands that reach back to the repo root
   so npm workspaces resolve correctly in a monorepo.
 
-Full production env-var lists and the SQLite → Postgres migration path:
-[docs/DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md).
+Full production env-var lists, the Postgres setup, and the Global x402 Challenge MainNet
+config: [docs/DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md).
 
 ## Platform capabilities
 
@@ -356,8 +365,8 @@ agentmarket/
 ## Tech stack
 
 TypeScript everywhere · Next.js 16 + Tailwind v4 (frontend) · Fastify 5 (backend) ·
-Prisma + SQLite (Postgres-ready) · x402 on Algorand · OpenTelemetry · npm workspaces +
-Turborepo · GitHub Actions CI · Render (API) + Vercel (web) for deployment.
+Prisma + Postgres · x402 on Algorand (TestNet + MainNet) · OpenTelemetry · npm workspaces +
+Turborepo · GitHub Actions CI · Render (API + managed Postgres) + Vercel (web) for deployment.
 
 ## Contributing
 
