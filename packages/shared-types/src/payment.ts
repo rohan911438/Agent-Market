@@ -23,6 +23,15 @@ export const PaymentRequirementSchema = z.object({
   asset: z.string(),
   maxTimeoutSeconds: z.number().int().positive().default(60),
   extra: z.record(z.string(), z.unknown()).optional(),
+  // V1 Bazaar discovery descriptor. x402 facilitators that support the
+  // discovery ("Bazaar") extension read this straight off the
+  // PaymentRequirements they receive at /verify and /settle — no client
+  // cooperation required — and catalog the resource after its first real
+  // settlement. Shape: `{ input: { type: "http", method, discoverable?,
+  // queryParams?|body?+bodyType? }, output?: <example response> }`.
+  // Left unconstrained here since the facilitator, not this contract, owns
+  // its schema. See @x402-avm/extensions' extractDiscoveryInfoV1.
+  outputSchema: z.record(z.string(), z.unknown()).optional(),
 });
 export type PaymentRequirement = z.infer<typeof PaymentRequirementSchema>;
 
@@ -30,6 +39,13 @@ export const PaymentRequiredResponseSchema = z.object({
   x402Version: z.number().int(),
   error: z.string().optional(),
   accepts: z.array(PaymentRequirementSchema).min(1),
+  // x402 v2 extension bag echoed on the 402 body — e.g. `{ bazaar: { info,
+  // schema } }` from declareDiscoveryExtension() and an optional
+  // `"x402-merchant"` identity block. Spec-compliant clients copy this into
+  // the PaymentPayload so the facilitator can catalog the resource; the V1
+  // `PaymentRequirement.outputSchema` path above is the client-independent
+  // fallback. Unconstrained for the same reason as outputSchema.
+  extensions: z.record(z.string(), z.unknown()).optional(),
 });
 export type PaymentRequiredResponse = z.infer<typeof PaymentRequiredResponseSchema>;
 
