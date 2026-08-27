@@ -14,6 +14,9 @@ services:
         sync: false
       - key: PAYMENT_PROVIDER
         value: algorand-x402
+      # Flip to `mainnet` for the Global x402 Challenge. When mainnet,
+      # X402_USDC_ASSET_ID must be 31566704 and X402_PAY_TO_ADDRESS must be a
+      # permanent address opted in to that ASA.
       - key: ALGORAND_NETWORK
         value: testnet
       - key: X402_FACILITATOR_URL
@@ -23,6 +26,20 @@ services:
       - key: X402_USDC_ASSET_ID
         sync: false
       - key: X402_FEE_PAYER_ADDRESS
+        sync: false
+      # Challenge attribution + Bazaar discovery. Set X402_CHALLENGE_TAG to
+      # `x402-global-challenge` and X402_BAZAAR_DISCOVERY to `true` to compete.
+      - key: X402_CHALLENGE_TAG
+        sync: false
+      - key: X402_BAZAAR_DISCOVERY
+        sync: false
+      - key: X402_MERCHANT_NAME
+        sync: false
+      - key: X402_MERCHANT_WEBSITE
+        sync: false
+      - key: X402_MERCHANT_LOGO
+        sync: false
+      - key: X402_MERCHANT_CATEGORIES
         sync: false
       - key: CORS_ORIGIN
         sync: false

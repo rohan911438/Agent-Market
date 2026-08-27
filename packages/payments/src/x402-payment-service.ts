@@ -1,6 +1,12 @@
 import type { PaymentPayload, PaymentRequiredResponse, PaymentRequirement } from '@rohankumar4179/shared-types';
-import type { PaymentProvider } from './payment-provider.interface.js';
+import type { PaymentProvider, RouteDiscovery } from './payment-provider.interface.js';
 import { decodePaymentHeader } from './x402-header-codec.js';
+
+/** Per-request routing metadata that only shapes the Bazaar discovery descriptor. */
+export interface BuildPaymentRequiredContext {
+  method?: string;
+  discovery?: RouteDiscovery;
+}
 
 export type IncomingPaymentResult =
   | { kind: 'missing' }
@@ -28,13 +34,23 @@ export class X402PaymentService {
     resource: string,
     priceUsd: number,
     algoUsdPrice?: number,
+    routeContext?: BuildPaymentRequiredContext,
   ): { body: PaymentRequiredResponse; requirements: PaymentRequirement[]; requirement: PaymentRequirement } {
-    const requirements = this.provider.getRequirements({ resource, priceUsd, algoUsdPrice });
+    const context = {
+      resource,
+      priceUsd,
+      algoUsdPrice,
+      method: routeContext?.method,
+      discovery: routeContext?.discovery,
+    };
+    const requirements = this.provider.getRequirements(context);
+    const extensions = this.provider.getResponseExtensions?.(context);
     return {
       body: {
         x402Version: this.provider.x402Version,
         error: 'Payment required — see accepts[] for terms',
         accepts: requirements,
+        ...(extensions ? { extensions } : {}),
       },
       requirements,
       // Convenience default (accepts[0]) for callers that only ever deal in

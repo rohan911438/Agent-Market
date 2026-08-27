@@ -28,6 +28,66 @@ describe('loadApiConfig', () => {
     expect(() => loadApiConfig({ CACHE_DRIVER: 'redis' })).toThrow(SecretValidationError);
   });
 
+  it('defaults the challenge/discovery knobs off and omits merchant identity', () => {
+    const config = loadApiConfig({
+      PAYMENT_PROVIDER: 'algorand-x402',
+      X402_FACILITATOR_URL: 'https://facilitator.example.com',
+      X402_PAY_TO_ADDRESS: 'SOME_ADDRESS',
+      X402_USDC_ASSET_ID: '12345',
+    });
+    expect(config.payments.challengeTag).toBeUndefined();
+    expect(config.payments.bazaarDiscovery).toBe(false);
+    expect(config.payments.merchant).toBeUndefined();
+  });
+
+  it('parses the Global x402 Challenge config (tag, discovery flag, merchant identity)', () => {
+    const config = loadApiConfig({
+      PAYMENT_PROVIDER: 'algorand-x402',
+      ALGORAND_NETWORK: 'mainnet',
+      X402_FACILITATOR_URL: 'https://facilitator.goplausible.xyz',
+      X402_PAY_TO_ADDRESS: 'SOME_ADDRESS',
+      X402_USDC_ASSET_ID: '31566704',
+      X402_CHALLENGE_TAG: 'x402-global-challenge',
+      X402_BAZAAR_DISCOVERY: 'true',
+      X402_MERCHANT_NAME: 'Agent Market',
+      X402_MERCHANT_WEBSITE: 'https://agent.example',
+      X402_MERCHANT_CATEGORIES: 'api, algorand ,x402',
+    });
+    expect(config.payments.challengeTag).toBe('x402-global-challenge');
+    expect(config.payments.bazaarDiscovery).toBe(true);
+    expect(config.payments.merchant).toEqual({
+      name: 'Agent Market',
+      website: 'https://agent.example',
+      logo: undefined,
+      categories: ['api', 'algorand', 'x402'],
+    });
+  });
+
+  it('treats X402_BAZAAR_DISCOVERY=false as false (not truthy string coercion)', () => {
+    const config = loadApiConfig({
+      PAYMENT_PROVIDER: 'algorand-x402',
+      X402_FACILITATOR_URL: 'https://facilitator.example.com',
+      X402_PAY_TO_ADDRESS: 'SOME_ADDRESS',
+      X402_USDC_ASSET_ID: '12345',
+      X402_BAZAAR_DISCOVERY: 'false',
+      X402_ENABLE_NATIVE_ALGO: 'false',
+    });
+    expect(config.payments.bazaarDiscovery).toBe(false);
+    expect(config.payments.enableNativeAlgo).toBe(false);
+  });
+
+  it('rejects a non-boolean X402_BAZAAR_DISCOVERY value at boot', () => {
+    expect(() =>
+      loadApiConfig({
+        PAYMENT_PROVIDER: 'algorand-x402',
+        X402_FACILITATOR_URL: 'https://facilitator.example.com',
+        X402_PAY_TO_ADDRESS: 'SOME_ADDRESS',
+        X402_USDC_ASSET_ID: '12345',
+        X402_BAZAAR_DISCOVERY: 'yes',
+      }),
+    ).toThrow(SecretValidationError);
+  });
+
   it('never surfaces NEWS_API_KEY unless explicitly set, and never in an error message', () => {
     const config = loadApiConfig({});
     expect(config.providerKeys.newsApiKey).toBeUndefined();
