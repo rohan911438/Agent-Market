@@ -4,7 +4,7 @@
 
 <h1 align="center">AgentMarket</h1>
 
-**x402-native marketplace for premium AI financial-intelligence APIs, settled on Algorand.**
+**x402-native marketplace for premium AI financial-intelligence APIs, settled in USDC on the Algorand blockchain.**
 
 AI agents, trading bots, and autonomous applications discover, purchase, and consume
 decision-intelligence endpoints through HTTP 402 micropayments — no subscriptions, no
@@ -36,6 +36,7 @@ The API explains **why**.
 | API (Render) | [agentmarket-api-bedc.onrender.com](https://agentmarket-api-bedc.onrender.com) — [`/health`](https://agentmarket-api-bedc.onrender.com/health) |
 | Web (Vercel) | [agentmarket-web-rohans-projects-cd679a85.vercel.app](https://agentmarket-web-rohans-projects-cd679a85.vercel.app) |
 | Pitch deck | [Google Slides](https://docs.google.com/presentation/d/1B5JbqAXSVYPB3MJI0PZcd3iT6QftsqVr9PQTgDdcW04/edit?usp=sharing) |
+| Demo video | [Watch on YouTube](https://youtu.be/sNN5gzBUaK8) |
 
 The API runs on Render's free plan (Docker, SQLite on ephemeral disk — data resets on
 redeploy). The web app is a Vercel deployment of `apps/web`, pointed at the Render API via
@@ -274,6 +275,12 @@ fee.
 | USDC asset (ASA ID `10458941`) | TestNet USDC | [View on Lora](https://lora.algokit.io/testnet/asset/10458941) |
 | Facilitator fee-payer address | `ZMFK2OI7ZBD2U27ISERZC4S6LKM6WMFJPZQ4MYNJDZ2VNBNMBA67RA22AA` | [View on Lora](https://lora.algokit.io/testnet/account/ZMFK2OI7ZBD2U27ISERZC4S6LKM6WMFJPZQ4MYNJDZ2VNBNMBA67RA22AA) |
 | Facilitator | [facilitator.goplausible.xyz](https://facilitator.goplausible.xyz) — verifies + settles every `/verify` and `/settle` call | — |
+
+**Proof of payment:** every dollar the site has ever charged lands in the merchant address
+above as USDC — its
+[transaction history on Lora](https://lora.algokit.io/testnet/account/GCPQKFXROLMZV43GID7IYZ6HI4KNPTMHVFZQH3MKP3MKPLI4D3PHKV2R34)
+is the live, on-chain record of every payment settled from the deployed web app, not a
+mocked ledger.
 
 There is no custom on-chain smart contract — AgentMarket is a metering/pricing layer in
 front of a standard x402 facilitator, so the only "contract" surface is the ASA above and
