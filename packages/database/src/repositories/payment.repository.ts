@@ -47,6 +47,19 @@ export class PaymentRepository {
     });
   }
 
+  /**
+   * Ledger-only — no real money moves (see workflow-executor.ts's REFUNDS
+   * comment, Phase 12). Marks a workflow step's escrow row as refunded
+   * because it never ran, or failed, after the workflow's real upfront
+   * payment had already covered it.
+   */
+  markRefunded(paymentRef: string): Promise<Payment> {
+    return this.prisma.payment.update({
+      where: { paymentRef },
+      data: { status: 'REFUNDED' },
+    });
+  }
+
   /** Sum of settled spend for a wallet since a given timestamp — backs daily spend caps. */
   async sumSettledSpendSince(walletId: string, since: Date): Promise<number> {
     const rows = await this.prisma.payment.findMany({

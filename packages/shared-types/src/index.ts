@@ -9,3 +9,4 @@ export * from './errors.js';
 export * from './payment.js';
 export * from './marketplace.js';
 export * from './intelligence.js';
+export * from './workflows.js';

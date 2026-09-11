@@ -1,6 +1,6 @@
 import 'fastify';
 import type { ProviderAccount } from '@prisma/client';
-import type { ErrorCode, PaymentPayload, PaymentRequirement } from '@agentmarket/shared-types';
+import type { ErrorCode, PaymentPayload, PaymentRequirement, WorkflowStepInput } from '@agentmarket/shared-types';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -27,5 +27,12 @@ declare module 'fastify' {
       providers: string[];
     };
     errorCode?: ErrorCode;
+    /**
+     * Set by the workflow route's dynamic x402 meta resolver (Phase 12) once
+     * the pipeline has been parsed, validated, and priced — so the handler
+     * doesn't re-parse the body or re-probe prices a second time.
+     */
+    workflowSteps?: WorkflowStepInput[];
+    workflowStepPricesUsd?: number[];
   }
 }
