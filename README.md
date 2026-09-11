@@ -25,6 +25,19 @@ Instead of `BTC Price = $120,000`, AgentMarket returns:
 
 The API explains **why**.
 
+## Live Deployments
+
+| | URL |
+|---|---|
+| API (Render) | [agentmarket-api-bedc.onrender.com](https://agentmarket-api-bedc.onrender.com) — [`/health`](https://agentmarket-api-bedc.onrender.com/health) |
+| Web (Vercel) | [agentmarket-web-rohans-projects-cd679a85.vercel.app](https://agentmarket-web-rohans-projects-cd679a85.vercel.app) |
+
+The API runs on Render's free plan (Docker, SQLite on ephemeral disk — data resets on
+redeploy). The web app is a Vercel deployment of `apps/web`, pointed at the Render API via
+`NEXT_PUBLIC_API_URL`. The Vercel deployment currently sits behind Vercel's default
+deployment-protection SSO gate; disable it in the project's Deployment Protection settings
+to make it publicly reachable.
+
 ## Status
 
 Phase 1 MVP. `/analyze`, `/market-summary`, `/sentiment`, `/risk-analysis`,
