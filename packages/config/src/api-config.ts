@@ -22,10 +22,21 @@ const ApiEnvSchema = z
     X402_FACILITATOR_URL: z.string().url().optional(),
     X402_PAY_TO_ADDRESS: z.string().optional(),
     X402_USDC_ASSET_ID: z.string().optional(),
+    // The facilitator's fee-payer account for this network (its
+    // `extra.feePayer` from GET {facilitatorUrl}/supported) — needed so the
+    // AVM "exact" v2 scheme can build its fee-sponsored atomic group.
+    X402_FEE_PAYER_ADDRESS: z.string().optional(),
 
     RATE_LIMIT_ANON_PER_MIN: z.coerce.number().int().positive().default(30),
     RATE_LIMIT_WALLET_PER_MIN: z.coerce.number().int().positive().default(300),
     DAILY_SPEND_CAP_USD: z.coerce.number().nonnegative().default(50),
+
+    // Signs the proof-of-verification token issued to a wallet after its
+    // first settled payment (see apps/api rate-limit middleware) so tier
+    // promotion can't be spoofed by simply sending someone else's public
+    // address. The insecure dev default only ever applies outside production
+    // (enforced below) — every real deploy must set its own.
+    WALLET_TOKEN_SECRET: z.string().min(1).default('dev-only-insecure-wallet-token-secret'),
 
     // Optional keyed providers: every keyless provider (CoinGecko, Binance,
     // Alternative.me, DefiLlama) works with none of these set.
@@ -50,6 +61,22 @@ const ApiEnvSchema = z
         message: 'REDIS_URL is required when CACHE_DRIVER=redis',
       });
     }
+    if (env.NODE_ENV === 'production') {
+      if (env.PAYMENT_PROVIDER === 'mock') {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['PAYMENT_PROVIDER'],
+          message: 'PAYMENT_PROVIDER=mock is not allowed when NODE_ENV=production — set algorand-x402',
+        });
+      }
+      if (env.WALLET_TOKEN_SECRET === 'dev-only-insecure-wallet-token-secret') {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['WALLET_TOKEN_SECRET'],
+          message: 'WALLET_TOKEN_SECRET must be set to a real secret when NODE_ENV=production',
+        });
+      }
+    }
   });
 
 export type ApiEnv = z.infer<typeof ApiEnvSchema>;
@@ -71,6 +98,7 @@ export interface ApiConfig {
     facilitatorUrl?: string;
     payToAddress?: string;
     usdcAssetId?: string;
+    feePayerAddress?: string;
   };
   rateLimits: {
     anonymousPerMinute: number;
@@ -79,6 +107,8 @@ export interface ApiConfig {
   };
   // Backend-only. Never serialized into an HTTP response or shipped to apps/web.
   providerKeys: { newsApiKey?: string };
+  // Backend-only. Signs the wallet-verification token; never logged or returned to clients.
+  security: { walletTokenSecret: string };
 }
 
 export function loadApiConfig(source?: Record<string, string | undefined>): ApiConfig {
@@ -103,6 +133,7 @@ export function loadApiConfig(source?: Record<string, string | undefined>): ApiC
       facilitatorUrl: secrets.getOptional('X402_FACILITATOR_URL'),
       payToAddress: secrets.getOptional('X402_PAY_TO_ADDRESS'),
       usdcAssetId: secrets.getOptional('X402_USDC_ASSET_ID'),
+      feePayerAddress: secrets.getOptional('X402_FEE_PAYER_ADDRESS'),
     },
     rateLimits: {
       anonymousPerMinute: secrets.get('RATE_LIMIT_ANON_PER_MIN'),
@@ -110,5 +141,6 @@ export function loadApiConfig(source?: Record<string, string | undefined>): ApiC
       dailySpendCapUsd: secrets.get('DAILY_SPEND_CAP_USD'),
     },
     providerKeys: { newsApiKey: secrets.getOptional('NEWS_API_KEY') },
+    security: { walletTokenSecret: secrets.get('WALLET_TOKEN_SECRET') },
   };
 }

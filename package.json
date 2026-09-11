@@ -35,7 +35,10 @@
     "vitest": "^2.1.8",
     "@vitest/coverage-v8": "^2.1.8",
     "rimraf": "^6.0.1",
-    "tsx": "^4.19.2"
+    "tsx": "^4.19.2",
+    "algosdk": "^3.6.0",
+    "@x402-avm/core": "^2.6.1",
+    "@x402-avm/avm": "^2.6.1"
   },
   "engines": {
     "node": ">=20.0.0",

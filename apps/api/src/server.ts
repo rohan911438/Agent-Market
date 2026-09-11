@@ -1,4 +1,5 @@
 import cors from '@fastify/cors';
+import helmet from '@fastify/helmet';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { randomUUID } from 'node:crypto';
 import type { AppContext } from './context.js';
@@ -20,7 +21,11 @@ export function buildServer(ctx: AppContext): FastifyInstance {
     request.startTimeMs = Date.now();
   });
 
-  server.register(cors, { origin: ctx.config.server.corsOrigin });
+  server.register(helmet);
+  server.register(cors, {
+    origin: ctx.config.server.corsOrigin,
+    exposedHeaders: ['x-wallet-token', 'x-payment-replay', 'x-ratelimit-limit', 'x-ratelimit-remaining', 'retry-after'],
+  });
 
   registerErrorHandler(server);
   registerRoutes(server, ctx);

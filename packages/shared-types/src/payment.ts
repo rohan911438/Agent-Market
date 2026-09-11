@@ -10,6 +10,12 @@ export const PaymentRequirementSchema = z.object({
   scheme: z.string(),
   network: z.string(),
   maxAmountRequired: z.string(),
+  // Mirrors maxAmountRequired under the field name x402 v2 facilitators
+  // (and their AVM "exact" scheme clients) read the required atomic amount
+  // from. Populated alongside maxAmountRequired rather than replacing it, so
+  // existing v1-style call sites (spend-cap math, DB bookkeeping) are
+  // unaffected.
+  amount: z.string().optional(),
   resource: z.string(),
   description: z.string(),
   mimeType: z.string().default('application/json'),

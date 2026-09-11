@@ -2,6 +2,7 @@ import { Prisma } from '@agentmarket/database';
 import { AppError } from '@agentmarket/shared-types';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { AppContext } from '../context.js';
+import { signWalletToken } from '../services/wallet-token.js';
 
 export interface MeteredRouteMeta {
   resource: string;
@@ -44,6 +45,11 @@ export function createX402PreHandler(ctx: AppContext, meta: MeteredRouteMeta) {
       throw new AppError('PAYMENT_INVALID', incoming.reason, 400);
     }
     if (incoming.kind === 'invalid') {
+      await ctx.db.auditLogs.record({
+        actorType: 'wallet',
+        action: 'payment.verification_failed',
+        metadata: { resource: meta.resource, reason: incoming.reason },
+      });
       throw new AppError('PAYMENT_VERIFICATION_FAILED', incoming.reason ?? 'Payment could not be verified', 402);
     }
 
@@ -101,11 +107,25 @@ export function createX402PreHandler(ctx: AppContext, meta: MeteredRouteMeta) {
     const settleResult = await ctx.paymentService.settle(payload, requirement);
     if (!settleResult.success) {
       await ctx.db.payments.markFailed(paymentRef);
+      await ctx.db.auditLogs.record({
+        actorType: 'wallet',
+        actorId: payerAddress,
+        action: 'payment.failed',
+        metadata: { resource: meta.resource, paymentRef, reason: settleResult.errorReason },
+      });
       throw new AppError('PAYMENT_VERIFICATION_FAILED', settleResult.errorReason ?? 'Settlement failed', 402);
     }
 
-    if (walletId) {
-      await ctx.db.wallets.markVerified(payerAddress!);
+    await ctx.db.auditLogs.record({
+      actorType: 'wallet',
+      actorId: payerAddress,
+      action: 'payment.settled',
+      metadata: { resource: meta.resource, paymentRef, transactionId: settleResult.transactionId },
+    });
+
+    if (walletId && payerAddress) {
+      await ctx.db.wallets.markVerified(payerAddress);
+      reply.header('x-wallet-token', signWalletToken(payerAddress, ctx.config.security.walletTokenSecret));
     }
 
     request.paymentContext = {

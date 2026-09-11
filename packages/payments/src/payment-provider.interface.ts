@@ -20,6 +20,8 @@ export interface PaymentContext {
  */
 export interface PaymentProvider {
   readonly id: string;
+  /** The x402 protocol version this provider's facilitator actually speaks — not every provider/facilitator agrees. */
+  readonly x402Version: number;
   getRequirements(context: PaymentContext): PaymentRequirement;
   verify(payload: PaymentPayload, requirement: PaymentRequirement): Promise<PaymentVerifyResult>;
   settle(payload: PaymentPayload, requirement: PaymentRequirement): Promise<PaymentSettleResult>;

@@ -8,8 +8,6 @@ export type IncomingPaymentResult =
   | { kind: 'invalid'; reason?: string }
   | { kind: 'verified'; payload: PaymentPayload; payerAddress?: string; paymentRef: string };
 
-const X402_VERSION = 1;
-
 /**
  * Framework-agnostic x402 protocol logic — building the 402 body and
  * processing the client's X-PAYMENT header. HTTP framework wiring
@@ -22,7 +20,11 @@ export class X402PaymentService {
   buildPaymentRequired(resource: string, priceUsd: number): { body: PaymentRequiredResponse; requirement: PaymentRequirement } {
     const requirement = this.provider.getRequirements({ resource, priceUsd });
     return {
-      body: { x402Version: X402_VERSION, error: 'Payment required — see accepts[] for terms', accepts: [requirement] },
+      body: {
+        x402Version: this.provider.x402Version,
+        error: 'Payment required — see accepts[] for terms',
+        accepts: [requirement],
+      },
       requirement,
     };
   }

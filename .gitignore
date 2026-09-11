@@ -31,5 +31,9 @@ Thumbs.db
 !.vscode/extensions.json
 .idea/
 
+
 # Vercel
 .vercel
+
+# TestNet demo wallet secrets — never commit
+/scripts/testnet/wallets.local.json

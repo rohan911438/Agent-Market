@@ -13,8 +13,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className="dark">
-      <body className="flex min-h-screen flex-col antialiased">
+    <html lang="en" className="dark" suppressHydrationWarning>
+      <body className="flex min-h-screen flex-col antialiased" suppressHydrationWarning>
         <WalletProvider>
           <NavBar />
           <main className="flex-1">{children}</main>

@@ -22,6 +22,10 @@ services:
         sync: false
       - key: X402_USDC_ASSET_ID
         sync: false
+      - key: X402_FEE_PAYER_ADDRESS
+        sync: false
       - key: CORS_ORIGIN
         sync: false
+      - key: WALLET_TOKEN_SECRET
+        generateValue: true
     healthCheckPath: /health

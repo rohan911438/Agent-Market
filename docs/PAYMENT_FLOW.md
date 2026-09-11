@@ -39,10 +39,12 @@ inspects.
 `AlgorandX402Provider` calls a real x402 facilitator's `/verify` and `/settle` HTTP
 endpoints against Algorand TestNet (or MainNet). In this mode the client must submit an
 actual signed Algorand payment transaction per the x402 `exact` scheme — built with the
-official `@x402/avm` / `@x402/fetch` client SDKs plus `algosdk` transaction signing.
-That construction is a drop-in replacement for `buildDemoPaymentHeader()`; the backend
-side (`AlgorandX402Provider`, the payment middleware, the idempotency/settlement logic)
-needs no changes to go from mock to real payments — only environment variables:
+`@x402-avm/avm` client SDK plus `@algorandfoundation/algokit-utils` transaction signing
+(see `scripts/testnet/demo-payment.mjs` for a complete, working example that settles a
+real payment on TestNet). That construction is a drop-in replacement for
+`buildDemoPaymentHeader()`; the backend side (`AlgorandX402Provider`, the payment
+middleware, the idempotency/settlement logic) needs no further changes to go from mock
+to real payments — only environment variables:
 
 ```bash
 PAYMENT_PROVIDER=algorand-x402
@@ -50,12 +52,29 @@ ALGORAND_NETWORK=testnet
 X402_FACILITATOR_URL=https://facilitator.goplausible.xyz
 X402_PAY_TO_ADDRESS=<your Algorand TestNet address>
 X402_USDC_ASSET_ID=<USDC-on-Algorand-TestNet asset id>
+X402_FEE_PAYER_ADDRESS=<facilitator's fee-payer address for this network>
 ```
+
+**Important — this facilitator only speaks x402 v2 for Algorand.** Its `/supported`
+discovery endpoint lists x402 v1 (legacy `algorand-testnet`/`algorand-mainnet` network
+names) entries, but as of this writing those aren't actually wired up server-side —
+a v1-shaped request gets `"No facilitator registered for scheme/network"` at `/verify`.
+Confirmed empirically only x402 v2 works: CAIP-2 network id (`algorand:<genesis-hash>`),
+a `payTo`/`amount`/`extra.feePayer`-driven **atomic transaction group** (the client's ASA
+transfer plus a zero-amount fee-sponsor txn from the facilitator's `feePayer` account, so
+the payer never needs ALGO for network fees), rather than v1's single signed transaction.
+`AlgorandX402Provider.x402Version` is `2` for exactly this reason, and
+`PaymentRequirement` carries both `maxAmountRequired` (used internally for spend-cap
+math/DB bookkeeping) and `amount` (what the v2 AVM client scheme actually reads) with the
+same value.
 
 ## Idempotency & replay protection
 
-`paymentRef` (extracted from the payment payload's `txId`/`nonce`/`signature`) has a
-**unique constraint** in the `Payment` table. The payment middleware:
+`paymentRef` has a **unique constraint** in the `Payment` table. For the AVM "exact"
+scheme it's a sha256 fingerprint of the specific signed transaction inside the atomic
+group's `paymentGroup` (deterministic — resubmitting the same signed payment yields the
+same ref); other schemes fall back to the payload's `txId`/`nonce`/`signature`. The
+payment middleware:
 
 1. Looks up a `CachedResponse` keyed by `payment:<paymentRef>` first. If found, the
    stored response is replayed verbatim — no re-verification, no re-settlement, no
