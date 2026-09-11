@@ -1,7 +1,6 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { ZodType } from 'zod';
 import type { AppContext } from '../context.js';
-import { createRateLimitPreHandler } from '../middleware/rate-limit.js';
 import { createX402PreHandler, REPLAY_CACHE_TTL_SECONDS } from '../middleware/x402-payment.js';
 import { tracedHandler, tracedPreHandler } from '../observability/tracing.js';
 
@@ -29,11 +28,12 @@ export interface RegisterMeteredRouteOptions<TQuery, TBody, TResult> {
 }
 
 /**
- * Wires a full metered route: validate -> rate limit -> x402 payment gate ->
- * handler -> response caching (for idempotent replay) -> observability
- * logging. Every intelligence endpoint is registered through this one
- * function so the cross-cutting concerns (payment, rate limiting, audit)
- * are implemented exactly once instead of duplicated per route.
+ * Wires a full metered route: validate -> x402 payment gate -> handler ->
+ * response caching (for idempotent replay) -> observability logging. Rate
+ * limiting is applied once, globally, in server.ts — not per-route here.
+ * Every intelligence endpoint is registered through this one function so the
+ * cross-cutting concerns (payment, audit) are implemented exactly once
+ * instead of duplicated per route.
  *
  * Validation runs in `preValidation`, *before* the payment gate — an
  * invalid request must fail for free. Validating inside the handler would
@@ -54,10 +54,7 @@ export function registerMeteredRoute<TQuery = undefined, TBody = undefined, TRes
         body: bodySchema ? bodySchema.parse(request.body) : undefined,
       };
     },
-    preHandler: [
-      tracedPreHandler('rate_limit.check', createRateLimitPreHandler(ctx)),
-      tracedPreHandler('payment.gate', createX402PreHandler(ctx, { resource, priceUsd, listingId })),
-    ],
+    preHandler: [tracedPreHandler('payment.gate', createX402PreHandler(ctx, { resource, priceUsd, listingId }))],
     handler: tracedHandler('handler', async (request, reply) => {
       const query = request.validated?.query as TQuery;
       const body = request.validated?.body as TBody;
