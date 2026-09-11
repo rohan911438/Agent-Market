@@ -2,7 +2,8 @@
 
 import { useTheme } from '@/lib/theme-context';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Menu, Moon, Sun, X, Zap } from 'lucide-react';
+import { Menu, Moon, Sun, X } from 'lucide-react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
@@ -26,8 +27,8 @@ export function NavBar() {
     <header className="glass sticky top-0 z-50 border-b border-border">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3.5">
         <Link href="/" className="flex items-center gap-2.5 font-display text-[17px] font-bold tracking-tight text-foreground">
-          <span className="flex h-7 w-7 items-center justify-center rounded-md bg-[linear-gradient(135deg,var(--color-primary),var(--color-payment))] text-white shadow-glow-primary">
-            <Zap className="h-4 w-4" strokeWidth={2.5} />
+          <span className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-md shadow-glow-primary">
+            <Image src="/images/logo-mark.png" alt="AgentMarket logo" width={28} height={28} priority />
           </span>
           AgentMarket
         </Link>
