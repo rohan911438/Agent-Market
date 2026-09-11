@@ -38,6 +38,15 @@ const ApiEnvSchema = z
     // (enforced below) — every real deploy must set its own.
     WALLET_TOKEN_SECRET: z.string().min(1).default('dev-only-insecure-wallet-token-secret'),
 
+    // Gates the admin-only endpoints (currently just the manual
+    // security-audit flag — see routes/admin/provider-verification.route.ts).
+    // There's no admin-role concept anywhere else in the codebase yet, so
+    // this is a single shared bearer secret, checked the same way
+    // provider-auth.ts checks provider keys — not a per-admin identity
+    // system. The insecure dev default is banned in production, same as
+    // WALLET_TOKEN_SECRET.
+    ADMIN_API_KEY: z.string().min(1).default('dev-only-insecure-admin-api-key'),
+
     // Optional keyed providers: every keyless provider (CoinGecko, Binance,
     // Alternative.me, DefiLlama) works with none of these set.
     NEWS_API_KEY: z.string().optional(),
@@ -76,6 +85,13 @@ const ApiEnvSchema = z
           message: 'WALLET_TOKEN_SECRET must be set to a real secret when NODE_ENV=production',
         });
       }
+      if (env.ADMIN_API_KEY === 'dev-only-insecure-admin-api-key') {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['ADMIN_API_KEY'],
+          message: 'ADMIN_API_KEY must be set to a real secret when NODE_ENV=production',
+        });
+      }
     }
   });
 
@@ -108,7 +124,7 @@ export interface ApiConfig {
   // Backend-only. Never serialized into an HTTP response or shipped to apps/web.
   providerKeys: { newsApiKey?: string };
   // Backend-only. Signs the wallet-verification token; never logged or returned to clients.
-  security: { walletTokenSecret: string };
+  security: { walletTokenSecret: string; adminApiKey: string };
 }
 
 export function loadApiConfig(source?: Record<string, string | undefined>): ApiConfig {
@@ -141,6 +157,6 @@ export function loadApiConfig(source?: Record<string, string | undefined>): ApiC
       dailySpendCapUsd: secrets.get('DAILY_SPEND_CAP_USD'),
     },
     providerKeys: { newsApiKey: secrets.getOptional('NEWS_API_KEY') },
-    security: { walletTokenSecret: secrets.get('WALLET_TOKEN_SECRET') },
+    security: { walletTokenSecret: secrets.get('WALLET_TOKEN_SECRET'), adminApiKey: secrets.get('ADMIN_API_KEY') },
   };
 }

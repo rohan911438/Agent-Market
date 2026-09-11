@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { SkeletonCard } from '@/components/ui/skeleton';
 import { callApi } from '@/lib/api-client';
+import { verificationTierBadge } from '@/lib/provider-status';
 import { motion } from 'framer-motion';
 import { ArrowDownAZ, ArrowUpDown, PackageSearch, Search } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
@@ -20,6 +21,9 @@ interface MarketplaceApi {
   priceUsd: number;
   endpoint: string;
   status: 'live' | 'beta';
+  providerName?: string;
+  isThirdParty?: boolean;
+  providerVerificationTier?: string;
 }
 
 type SortKey = 'name' | 'price-asc' | 'price-desc';
@@ -105,31 +109,38 @@ export default function MarketplacePage() {
           Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
 
         {!loading &&
-          filtered.map((api, i) => (
-            <motion.div
-              key={api.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: Math.min(i * 0.04, 0.4) }}
-            >
-              <Card interactive>
-                <CardBody>
-                  <div className="mb-2 flex items-center justify-between">
-                    <Badge tone={api.status === 'live' ? 'success' : 'warning'} dot>
-                      {api.status}
-                    </Badge>
-                    <span className="text-sm font-semibold text-accent">${api.priceUsd.toFixed(2)} / call</span>
-                  </div>
-                  <div className="mb-2 flex items-center gap-2">
-                    <h3 className="font-medium text-foreground">{api.name}</h3>
-                    <Badge tone="default">{api.category}</Badge>
-                  </div>
-                  <p className="text-sm text-muted">{api.description}</p>
-                  <p className="mt-3 font-mono text-xs text-muted-2">{api.endpoint}</p>
-                </CardBody>
-              </Card>
-            </motion.div>
-          ))}
+          filtered.map((api, i) => {
+            const tier = api.isThirdParty && api.providerVerificationTier ? verificationTierBadge(api.providerVerificationTier) : null;
+            return (
+              <motion.div
+                key={api.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: Math.min(i * 0.04, 0.4) }}
+              >
+                <Card interactive>
+                  <CardBody>
+                    <div className="mb-2 flex items-center justify-between">
+                      <Badge tone={api.status === 'live' ? 'success' : 'warning'} dot>
+                        {api.status}
+                      </Badge>
+                      <span className="text-sm font-semibold text-accent">${api.priceUsd.toFixed(2)} / call</span>
+                    </div>
+                    <div className="mb-2 flex flex-wrap items-center gap-2">
+                      <h3 className="font-medium text-foreground">{api.name}</h3>
+                      <Badge tone="default">{api.category}</Badge>
+                      {tier && <Badge tone={tier.tone}>{tier.label}</Badge>}
+                    </div>
+                    <p className="text-sm text-muted">{api.description}</p>
+                    {api.isThirdParty && api.providerName && (
+                      <p className="mt-2 text-xs text-muted-2">by {api.providerName}</p>
+                    )}
+                    <p className="mt-3 font-mono text-xs text-muted-2">{api.endpoint}</p>
+                  </CardBody>
+                </Card>
+              </motion.div>
+            );
+          })}
 
         {!loading && filtered.length === 0 && (
           <div className="col-span-full flex flex-col items-center gap-3 rounded-lg border border-dashed border-border py-16 text-center">

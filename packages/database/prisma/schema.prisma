@@ -214,6 +214,11 @@ model ProviderAccount {
   apiKeyHash    String    @unique
   status        String    @default("pending") // pending | verified | suspended
   verifiedAt    DateTime?
+  /// Set only by the admin-only security-audit action (see
+  /// routes/admin/provider-verification.route.ts) — a manual operator flag,
+  /// never an automated check. Required (on top of status "verified") to
+  /// reach the "verified_enterprise" tier computed in services/trust-score.ts.
+  securityAuditPassedAt DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 

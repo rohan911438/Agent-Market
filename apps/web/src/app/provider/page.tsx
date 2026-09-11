@@ -17,7 +17,7 @@ import {
   verifyProvider,
 } from '@/lib/provider-api';
 import { useProviderSession } from '@/lib/provider-context';
-import { listingStatusBadge, providerStatusBadge } from '@/lib/provider-status';
+import { listingStatusBadge, providerStatusBadge, verificationTierBadge } from '@/lib/provider-status';
 import type { ApiListingView, ProviderAccountView, RevenueSummaryView } from '@agentmarket/shared-types';
 import { AnimatePresence, motion } from 'framer-motion';
 import { DollarSign, KeyRound, LogOut, Plus, RefreshCw, ShieldCheck, Store } from 'lucide-react';
@@ -346,6 +346,7 @@ function ProviderDashboard({ apiKey }: { apiKey: string }) {
   }
 
   const status = providerStatusBadge(account.status);
+  const tier = verificationTierBadge(account.verificationTier);
 
   return (
     <div className="space-y-6">
@@ -357,6 +358,8 @@ function ProviderDashboard({ apiKey }: { apiKey: string }) {
               <Badge tone={status.tone} dot>
                 {status.label}
               </Badge>
+              {tier && <Badge tone={tier.tone}>{tier.label}</Badge>}
+              <span className="text-xs text-muted-2">Trust score {account.trustScore}/100</span>
             </div>
             <p className="mt-0.5 text-sm text-muted">{account.email}</p>
           </div>

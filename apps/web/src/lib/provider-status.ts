@@ -1,4 +1,4 @@
-export type BadgeTone = 'success' | 'warning' | 'danger' | 'default';
+export type BadgeTone = 'success' | 'warning' | 'danger' | 'default' | 'accent' | 'info';
 
 export function providerStatusBadge(status: string): { tone: BadgeTone; label: string } {
   switch (status) {
@@ -23,5 +23,21 @@ export function listingStatusBadge(status: string): { tone: BadgeTone; label: st
       return { tone: 'danger', label: 'Suspended' };
     default:
       return { tone: 'default', label: status };
+  }
+}
+
+/**
+ * The verification ladder (Phase 8) — distinct from `status` above.
+ * "unverified" renders no badge (returns null) rather than a noisy default
+ * one, since it's the common/default state, not a signal worth calling out.
+ */
+export function verificationTierBadge(tier: string): { tone: BadgeTone; label: string } | null {
+  switch (tier) {
+    case 'verified_enterprise':
+      return { tone: 'accent', label: 'Verified Enterprise' };
+    case 'verified':
+      return { tone: 'info', label: 'Verified' };
+    default:
+      return null;
   }
 }

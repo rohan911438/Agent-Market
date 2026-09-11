@@ -51,7 +51,20 @@ describe('loadApiConfig', () => {
     ).toThrow(SecretValidationError);
   });
 
-  it('accepts a production config with a real payment provider and wallet token secret', () => {
+  it('rejects the default ADMIN_API_KEY when NODE_ENV=production', () => {
+    expect(() =>
+      loadApiConfig({
+        NODE_ENV: 'production',
+        PAYMENT_PROVIDER: 'algorand-x402',
+        X402_FACILITATOR_URL: 'https://facilitator.example.com',
+        X402_PAY_TO_ADDRESS: 'SOME_ADDRESS',
+        X402_USDC_ASSET_ID: '12345',
+        WALLET_TOKEN_SECRET: 'real-secret',
+      }),
+    ).toThrow(SecretValidationError);
+  });
+
+  it('accepts a production config with a real payment provider, wallet token secret, and admin key', () => {
     const config = loadApiConfig({
       NODE_ENV: 'production',
       PAYMENT_PROVIDER: 'algorand-x402',
@@ -59,7 +72,9 @@ describe('loadApiConfig', () => {
       X402_PAY_TO_ADDRESS: 'SOME_ADDRESS',
       X402_USDC_ASSET_ID: '12345',
       WALLET_TOKEN_SECRET: 'real-secret',
+      ADMIN_API_KEY: 'real-admin-secret',
     });
     expect(config.security.walletTokenSecret).toBe('real-secret');
+    expect(config.security.adminApiKey).toBe('real-admin-secret');
   });
 });

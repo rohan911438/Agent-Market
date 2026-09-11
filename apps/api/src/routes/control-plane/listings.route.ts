@@ -11,8 +11,9 @@ import type { AppContext } from '../../context.js';
 import { createProviderAuthPreHandler } from '../../middleware/provider-auth.js';
 import { evaluatePublishGate } from '../../services/listing-publish-gate.js';
 import { parseOpenApiSpec } from '../../services/openapi-spec.js';
+import { computeProviderTrust, type ProviderTrustSummary } from '../../services/trust-score.js';
 
-function toView(listing: ApiListing): ApiListingView {
+function toView(listing: ApiListing, trust: ProviderTrustSummary): ApiListingView {
   return {
     id: listing.id,
     slug: listing.slug,
@@ -35,6 +36,8 @@ function toView(listing: ApiListing): ApiListingView {
           postmanUrl: `/v1/listings/${listing.slug}/postman.json`,
         }
       : null,
+    providerTrustScore: trust.trustScore,
+    providerVerificationTier: trust.verificationTier,
   };
 }
 
@@ -90,18 +93,20 @@ export function registerListingRoutes(server: FastifyInstance, ctx: AppContext):
     });
 
     reply.code(201);
-    return toView(listing);
+    return toView(listing, await computeProviderTrust(ctx, account));
   });
 
   server.get('/v1/listings', { preHandler: requireProviderAuth }, async (request) => {
-    const listings = await ctx.db.apiListings.listByProvider(request.providerAccount!.id);
-    return { listings: listings.map(toView) };
+    const account = request.providerAccount!;
+    const [listings, trust] = await Promise.all([ctx.db.apiListings.listByProvider(account.id), computeProviderTrust(ctx, account)]);
+    return { listings: listings.map((listing) => toView(listing, trust)) };
   });
 
   server.get('/v1/listings/:id', { preHandler: requireProviderAuth }, async (request) => {
     const { id } = request.params as { id: string };
-    const listing = await loadOwnedListing(ctx, id, request.providerAccount!.id);
-    return toView(listing);
+    const account = request.providerAccount!;
+    const listing = await loadOwnedListing(ctx, id, account.id);
+    return toView(listing, await computeProviderTrust(ctx, account));
   });
 
   server.patch('/v1/listings/:id/pricing', { preHandler: requireProviderAuth }, async (request) => {
@@ -117,7 +122,7 @@ export function registerListingRoutes(server: FastifyInstance, ctx: AppContext):
       action: 'listing.pricing_configured',
       metadata: { listingId: id, ...input },
     });
-    return toView(listing);
+    return toView(listing, await computeProviderTrust(ctx, account));
   });
 
   server.patch('/v1/listings/:id/payment', { preHandler: requireProviderAuth }, async (request) => {
@@ -133,7 +138,7 @@ export function registerListingRoutes(server: FastifyInstance, ctx: AppContext):
       action: 'listing.payment_configured',
       metadata: { listingId: id },
     });
-    return toView(listing);
+    return toView(listing, await computeProviderTrust(ctx, account));
   });
 
   server.post('/v1/listings/:id/publish', { preHandler: requireProviderAuth }, async (request) => {
@@ -175,6 +180,8 @@ export function registerListingRoutes(server: FastifyInstance, ctx: AppContext):
       action: 'listing.published',
       metadata: { listingId: id, slug: listing.slug },
     });
-    return toView(published);
+    // Computed *after* recording this publish, so the fresh publish-success-rate
+    // signal in the returned trust score reflects the action that just happened.
+    return toView(published, await computeProviderTrust(ctx, account));
   });
 }
