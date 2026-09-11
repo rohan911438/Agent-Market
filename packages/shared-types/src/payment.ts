@@ -35,6 +35,27 @@ export const PaymentRequirementSchema = z.object({
 });
 export type PaymentRequirement = z.infer<typeof PaymentRequirementSchema>;
 
+/**
+ * The canonical x402 v2 spec's `ResourceInfo` object (specs/x402-specification-v2.md
+ * §5.1.2/§5.2.2, coinbase/x402): a REQUIRED top-level field of `PaymentRequired`
+ * (and an optional one on `PaymentPayload`) carrying the resource's real,
+ * absolute URL. This is the field the GoPlausible facilitator's Bazaar
+ * discovery extractor (`extractDiscoveryInfo(paymentPayload, ...)`) actually
+ * keys its catalog entries on — confirmed empirically: a real settled
+ * MainNet payment with `extensions.bazaar` present but no `resource.url`
+ * anywhere in the payload never appeared in the facilitator's
+ * `/discovery/resources` catalog. `url` must be absolute (this repo's own
+ * `PaymentRequirement.resource` field, by contrast, is deliberately a
+ * relative route path used for internal bookkeeping/audit — see that
+ * field's own history — and is NOT this object).
+ */
+export const ResourceInfoSchema = z.object({
+  url: z.string(),
+  description: z.string().optional(),
+  mimeType: z.string().optional(),
+});
+export type ResourceInfo = z.infer<typeof ResourceInfoSchema>;
+
 export const PaymentRequiredResponseSchema = z.object({
   x402Version: z.number().int(),
   error: z.string().optional(),
@@ -46,6 +67,11 @@ export const PaymentRequiredResponseSchema = z.object({
   // `PaymentRequirement.outputSchema` path above is the client-independent
   // fallback. Unconstrained for the same reason as outputSchema.
   extensions: z.record(z.string(), z.unknown()).optional(),
+  // See ResourceInfoSchema above. Optional here (the spec marks it required)
+  // for backward compatibility with any caller built before this field
+  // existed; X402PaymentService.buildPaymentRequired always populates it
+  // when the route handler supplies an absolute origin.
+  resource: ResourceInfoSchema.optional(),
 });
 export type PaymentRequiredResponse = z.infer<typeof PaymentRequiredResponseSchema>;
 
@@ -64,17 +90,18 @@ export const PaymentPayloadSchema = z.object({
   payload: z.record(z.string(), z.unknown()),
   // Verbatim echo of the 402 response's own `extensions` bag (see
   // PaymentRequiredResponseSchema above) — a spec-compliant client copies it
-  // here unchanged so the facilitator can catalog the resource in the Bazaar
-  // and attribute a challenge tag on /verify + /settle (see
-  // docs/PAYMENT_FLOW.md's "Bazaar discovery" section). Without this field,
+  // here unchanged so the facilitator can validate/attach the Bazaar
+  // extension. Necessary but NOT sufficient for cataloging on its own — see
+  // `resource` below and docs/PAYMENT_FLOW.md's "Bazaar discovery" section
+  // for the full, empirically-confirmed story. Without this field,
   // `decodePaymentHeader`'s `.parse()` silently dropped any `extensions` a
   // client sent (zod strips unknown keys by default) before it ever reached
-  // the facilitator — confirmed empirically: a real settled mainnet payment
-  // showed up on the facilitator's leaderboard with `bazaar:false,
-  // challenge:false` until this field (plus the client-side echo in
-  // agent-sdk/algorand-scheme.ts, x402-client.ts, and demo-payment.mjs) was
-  // added.
+  // the facilitator.
   extensions: z.record(z.string(), z.unknown()).optional(),
+  // Verbatim echo of the 402 response's own top-level `resource` object —
+  // see ResourceInfoSchema's docstring for why this, not `extensions` alone,
+  // is what actually drives Bazaar cataloging.
+  resource: ResourceInfoSchema.optional(),
 });
 export type PaymentPayload = z.infer<typeof PaymentPayloadSchema>;
 

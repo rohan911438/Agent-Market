@@ -1,7 +1,7 @@
 import { ExactAvmScheme, toClientAvmSigner, type ClientAvmSigner } from '@x402-avm/avm';
 import algosdk from 'algosdk';
 import type { PaymentPayload, PaymentRequirement } from '@rohankumar4179/shared-types';
-import type { PaymentScheme } from '../types.js';
+import type { DiscoveryEcho, PaymentScheme } from '../types.js';
 
 export interface AlgorandPaymentSchemeConfig {
   /** A 25-word Algorand mnemonic. Mutually exclusive with `privateKeyBase64` / `signer`. */
@@ -48,7 +48,7 @@ export class AlgorandPaymentScheme implements PaymentScheme {
     return network.startsWith('algorand:');
   }
 
-  async createPayload(requirement: PaymentRequirement, x402Version: number, extensions?: Record<string, unknown>): Promise<PaymentPayload> {
+  async createPayload(requirement: PaymentRequirement, x402Version: number, discoveryEcho?: DiscoveryEcho): Promise<PaymentPayload> {
     const amount = requirement.amount ?? requirement.maxAmountRequired;
     // `Network` in @x402-avm/core is a `${string}:${string}` CAIP-2 template
     // type; `supports()` above already confirmed this string matches that
@@ -71,9 +71,12 @@ export class AlgorandPaymentScheme implements PaymentScheme {
       payload: result.payload,
       // Echoed verbatim, not merged/reshaped — the facilitator's Bazaar
       // extension validates that an echoing client reproduces the advertised
-      // `info` faithfully (see docs/PAYMENT_FLOW.md's "Bazaar discovery"
-      // section for how this was confirmed against the live facilitator).
-      ...(extensions ? { extensions } : {}),
+      // `info` faithfully, and its discovery extractor keys the catalog
+      // entry on `resource.url` specifically (see docs/PAYMENT_FLOW.md's
+      // "Bazaar discovery" section for how this was confirmed against the
+      // live facilitator).
+      ...(discoveryEcho?.extensions ? { extensions: discoveryEcho.extensions } : {}),
+      ...(discoveryEcho?.resource ? { resource: discoveryEcho.resource } : {}),
     };
   }
 }

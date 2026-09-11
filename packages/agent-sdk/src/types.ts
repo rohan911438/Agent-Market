@@ -1,7 +1,10 @@
-import type { BudgetConfig, PaymentPayload, PaymentRequirement } from '@rohankumar4179/shared-types';
+import type { BudgetConfig, PaymentPayload, PaymentRequiredResponse, PaymentRequirement } from '@rohankumar4179/shared-types';
 import type { Budget } from './budget.js';
 
 export type { BudgetConfig };
+
+/** The subset of the 402 response a PaymentScheme needs to echo back for Bazaar discovery — see PaymentScheme.createPayload. */
+export type DiscoveryEcho = Pick<PaymentRequiredResponse, 'extensions' | 'resource'>;
 
 /** USDC (and this SDK's mock currency) both use 6 decimal places — see AlgorandX402Provider/MockPaymentProvider on the server. */
 export const ATOMIC_UNITS_PER_USD = 1_000_000;
@@ -18,14 +21,18 @@ export interface PaymentScheme {
   /**
    * `x402Version` is the server's declared protocol version from the 402
    * response — echo it back in the payload rather than assuming a fixed
-   * value. `extensions` is the 402 response's own top-level `extensions` bag
-   * (e.g. Bazaar discovery info) — a compliant implementation echoes it back
-   * verbatim in the returned payload's own `extensions` field so the
-   * facilitator can catalog the resource; see AlgorandPaymentScheme for the
-   * real implementation (MockPaymentScheme ignores it, nothing downstream of
-   * the mock provider reads it).
+   * value. `discoveryEcho` carries the 402 response's own `extensions` bag
+   * and top-level `resource` (spec `ResourceInfo`) object — a compliant
+   * implementation echoes BOTH back verbatim in the returned payload so the
+   * facilitator can catalog the resource in the Bazaar. `extensions` alone
+   * is not sufficient: the facilitator's discovery extractor keys its
+   * catalog entry on `payload.resource.url` (confirmed empirically against
+   * a live facilitator — see docs/PAYMENT_FLOW.md's "Bazaar discovery"
+   * section). See AlgorandPaymentScheme for the real implementation
+   * (MockPaymentScheme ignores it, nothing downstream of the mock provider
+   * reads it).
    */
-  createPayload(requirement: PaymentRequirement, x402Version: number, extensions?: Record<string, unknown>): Promise<PaymentPayload>;
+  createPayload(requirement: PaymentRequirement, x402Version: number, discoveryEcho?: DiscoveryEcho): Promise<PaymentPayload>;
 }
 
 export interface RetryConfig {

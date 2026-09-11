@@ -3,6 +3,7 @@ import type { RouteDiscovery } from '@agentmarket/payments';
 import { AppError } from '@rohankumar4179/shared-types';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { AppContext } from '../context.js';
+import { originOf } from '../routes/catalog/origin.js';
 import { signWalletToken } from '../services/wallet-token.js';
 
 export interface MeteredRouteMeta {
@@ -94,7 +95,7 @@ export function createX402PreHandler(
       resolvedMeta.resource,
       resolvedMeta.priceUsd,
       algoUsdPrice,
-      { method: request.method, discovery: resolvedMeta.discovery },
+      { method: request.method, discovery: resolvedMeta.discovery, origin: originOf(request) },
     );
     const header = headerValue(request.headers['x-payment']);
 

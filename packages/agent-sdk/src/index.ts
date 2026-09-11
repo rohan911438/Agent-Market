@@ -24,6 +24,7 @@ export type {
   CapabilitySearchResult,
   CostEstimate,
   DiscoverQuery,
+  DiscoveryEcho,
   MarketplaceListing,
   PaymentScheme,
   RetryConfig,
