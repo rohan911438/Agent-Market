@@ -1,3 +1,4 @@
+export * from './catalog.js';
 export * from './common.js';
 export * from './control-plane.js';
 export * from './errors.js';

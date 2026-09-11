@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { CatalogDocsLinksSchema } from './catalog.js';
 
 export const ProviderAccountStatusSchema = z.enum(['pending', 'verified', 'suspended']);
 export type ProviderAccountStatus = z.infer<typeof ProviderAccountStatusSchema>;
@@ -89,6 +90,8 @@ export const ApiListingViewSchema = z.object({
   payoutWalletAddress: z.string().nullable(),
   status: ListingStatusSchema,
   publishedAt: z.string().datetime().nullable(),
+  /** Null when no valid openApiSpec was uploaded — the catalog degrades gracefully rather than requiring one. */
+  protocolDocs: CatalogDocsLinksSchema.nullable(),
 });
 export type ApiListingView = z.infer<typeof ApiListingViewSchema>;
 
