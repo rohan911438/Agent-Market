@@ -48,7 +48,7 @@ export class AlgorandPaymentScheme implements PaymentScheme {
     return network.startsWith('algorand:');
   }
 
-  async createPayload(requirement: PaymentRequirement, x402Version: number): Promise<PaymentPayload> {
+  async createPayload(requirement: PaymentRequirement, x402Version: number, extensions?: Record<string, unknown>): Promise<PaymentPayload> {
     const amount = requirement.amount ?? requirement.maxAmountRequired;
     // `Network` in @x402-avm/core is a `${string}:${string}` CAIP-2 template
     // type; `supports()` above already confirmed this string matches that
@@ -69,6 +69,11 @@ export class AlgorandPaymentScheme implements PaymentScheme {
       scheme: requirement.scheme,
       network: requirement.network,
       payload: result.payload,
+      // Echoed verbatim, not merged/reshaped — the facilitator's Bazaar
+      // extension validates that an echoing client reproduces the advertised
+      // `info` faithfully (see docs/PAYMENT_FLOW.md's "Bazaar discovery"
+      // section for how this was confirmed against the live facilitator).
+      ...(extensions ? { extensions } : {}),
     };
   }
 }

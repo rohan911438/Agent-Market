@@ -18,7 +18,7 @@ export class MockPaymentScheme implements PaymentScheme {
     return network === 'mock';
   }
 
-  async createPayload(requirement: PaymentRequirement, x402Version: number): Promise<PaymentPayload> {
+  async createPayload(requirement: PaymentRequirement, x402Version: number, _extensions?: Record<string, unknown>): Promise<PaymentPayload> {
     return {
       x402Version,
       scheme: requirement.scheme,

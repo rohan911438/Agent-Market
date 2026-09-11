@@ -15,8 +15,17 @@ export const ATOMIC_UNITS_PER_USD = 1_000_000;
 export interface PaymentScheme {
   /** Whether this scheme can pay a requirement advertising this network (e.g. "mock", or an Algorand CAIP-2 id). */
   supports(network: string): boolean;
-  /** `x402Version` is the server's declared protocol version from the 402 response — echo it back in the payload rather than assuming a fixed value. */
-  createPayload(requirement: PaymentRequirement, x402Version: number): Promise<PaymentPayload>;
+  /**
+   * `x402Version` is the server's declared protocol version from the 402
+   * response — echo it back in the payload rather than assuming a fixed
+   * value. `extensions` is the 402 response's own top-level `extensions` bag
+   * (e.g. Bazaar discovery info) — a compliant implementation echoes it back
+   * verbatim in the returned payload's own `extensions` field so the
+   * facilitator can catalog the resource; see AlgorandPaymentScheme for the
+   * real implementation (MockPaymentScheme ignores it, nothing downstream of
+   * the mock provider reads it).
+   */
+  createPayload(requirement: PaymentRequirement, x402Version: number, extensions?: Record<string, unknown>): Promise<PaymentPayload>;
 }
 
 export interface RetryConfig {

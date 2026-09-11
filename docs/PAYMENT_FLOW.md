@@ -72,6 +72,53 @@ the payer never needs ALGO for network fees), rather than v1's single signed tra
 math/DB bookkeeping) and `amount` (what the v2 AVM client scheme actually reads) with the
 same value.
 
+## Bazaar discovery & the Global x402 Challenge tag
+
+Setting `X402_BAZAAR_DISCOVERY=true` makes `AlgorandX402Provider` attach a V1 discovery
+descriptor (`PaymentRequirement.outputSchema`) to every requirement and a v2
+`extensions.bazaar` (+ optional `extensions["x402-merchant"]`) block to the 402 response
+body, so the GoPlausible facilitator can catalog the endpoint in its public Bazaar
+(`GET /discovery/resources`) and, with `X402_CHALLENGE_TAG=x402-global-challenge` set too,
+attribute settlements to the Global x402 Challenge leaderboard.
+
+**A real MainNet settlement on 2026-09-11 exposed a bug in this**: the payment went
+through correctly (200 OK, funds moved on-chain, a real facilitator receipt was issued),
+but the resulting leaderboard entry showed `bazaar: false, challenge: false` — the
+endpoint never appeared in the Bazaar catalog at all. Root cause, confirmed against the
+live facilitator's own `/discovery/resources`, `/data/leaderboards`, and
+`/api/receipt/{txId}` endpoints (not guessed):
+
+1. **Cataloging is a side effect of the *client* echoing the 402's `extensions` bag back**
+   in its `X-PAYMENT` payload, per the x402 Bazaar extension's documented flow
+   ("resource server declares → 402 carries `extensions.bazaar` → client copies it into
+   `PaymentPayload` → facilitator extracts it at verify/settle"). None of this repo's three
+   AVM payment clients did that: `packages/agent-sdk/src/payment/algorand-scheme.ts`,
+   `apps/web/src/lib/x402-client.ts`, and `scripts/testnet/demo-payment.mjs` each built
+   their outgoing `PaymentPayload` from only the single accepted `PaymentRequirement`,
+   never the full 402 body — so `extensions` was never in scope to copy.
+2. Even a client that *did* echo it back would have lost it anyway:
+   `PaymentPayloadSchema` (`packages/shared-types/src/payment.ts`) had no `extensions`
+   field, so `decodePaymentHeader`'s `PaymentPayloadSchema.parse(raw)` silently stripped
+   it (zod drops unknown keys by default) before `AlgorandX402Provider.verify()`/`settle()`
+   ever saw it.
+
+**Fix**: `PaymentPayloadSchema` now has an optional `extensions` field; `PaymentScheme.
+createPayload()` takes the 402 response's `extensions` as a third argument and every
+implementation (`AlgorandPaymentScheme`, the web app's `buildRealPaymentHeader`/
+`buildRealAlgoPaymentHeader`, `demo-payment.mjs`) echoes it verbatim into the payload it
+returns. `verify()`/`settle()` needed no change — they already forward the whole decoded
+payload object, so once the schema stopped stripping it, it started reaching the
+facilitator automatically. Regression tests:
+`packages/payments/src/x402-header-codec.test.ts` (round-trip preserves `extensions`) and
+`packages/payments/src/algorand-x402-provider.test.ts` (`verify`/`settle` forward it in
+the request body).
+
+If you're debugging a similar "settled but not listed" symptom against this same
+facilitator, check in order: (1) does the 402 body actually carry `extensions.bazaar`
+(`bazaarDiscovery` config on), (2) does your client's outgoing X-PAYMENT payload contain
+an `extensions` key at all, (3) does your server's payload schema/decoder preserve
+unknown-to-you fields rather than stripping them.
+
 ## Idempotency & replay protection
 
 `paymentRef` has a **unique constraint** in the `Payment` table. For the AVM "exact"

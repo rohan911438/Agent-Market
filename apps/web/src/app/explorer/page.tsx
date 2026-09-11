@@ -56,7 +56,12 @@ export default function ExplorerPage() {
   const [paymentRequirements, setPaymentRequirements] = useState<unknown>(null);
   const [response, setResponse] = useState<unknown>(null);
   const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState<{ path: string; x402Version: number; accepts: PaymentRequirement[] } | null>(null);
+  const [pending, setPending] = useState<{
+    path: string;
+    x402Version: number;
+    accepts: PaymentRequirement[];
+    extensions?: Record<string, unknown>;
+  } | null>(null);
 
   const endpoint = ENDPOINTS[endpointIndex]!;
 
@@ -97,20 +102,25 @@ export default function ExplorerPage() {
       return;
     }
 
-    const { x402Version, accepts } = first.body as PaymentRequiredResponse;
+    const { x402Version, accepts, extensions } = first.body as PaymentRequiredResponse;
 
     if (accepts.length > 1) {
       // More than one accepted payment asset (e.g. USDC and native ALGO) —
       // let the user pick rather than silently defaulting to accepts[0].
-      setPending({ path, x402Version, accepts });
+      setPending({ path, x402Version, accepts, extensions });
       setState('choosing');
       return;
     }
 
-    await payWith(path, x402Version, accepts[0]!);
+    await payWith(path, x402Version, accepts[0]!, extensions);
   }
 
-  async function payWith(path: string, x402Version: number, requirement: PaymentRequirement): Promise<void> {
+  async function payWith(
+    path: string,
+    x402Version: number,
+    requirement: PaymentRequirement,
+    extensions?: Record<string, unknown>,
+  ): Promise<void> {
     if (!address) return;
 
     let header: string;
@@ -132,8 +142,8 @@ export default function ExplorerPage() {
       try {
         header =
           requirement.asset === NATIVE_ALGO_ASSET
-            ? await buildRealAlgoPaymentHeader(signer, x402Version, requirement)
-            : await buildRealPaymentHeader(signer, x402Version, requirement);
+            ? await buildRealAlgoPaymentHeader(signer, x402Version, requirement, extensions)
+            : await buildRealPaymentHeader(signer, x402Version, requirement, extensions);
       } catch (err) {
         setError(
           `Signing was cancelled or failed: ${err instanceof Error ? err.message : String(err)}`,
@@ -259,7 +269,7 @@ export default function ExplorerPage() {
                     key={requirement.asset}
                     variant="secondary"
                     className="w-full justify-between"
-                    onClick={() => void payWith(pending.path, pending.x402Version, requirement)}
+                    onClick={() => void payWith(pending.path, pending.x402Version, requirement, pending.extensions)}
                   >
                     <span>{requirement.asset === NATIVE_ALGO_ASSET ? 'Native ALGO' : 'USDC'}</span>
                     <span className="font-mono text-xs">{assetLabel(requirement)}</span>

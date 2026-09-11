@@ -101,6 +101,13 @@ const paymentPayload = {
   scheme: requirement.scheme,
   network: requirement.network,
   payload,
+  // Echoed verbatim from the 402 response — this is what actually makes the
+  // facilitator catalog the resource in the Bazaar and attribute the
+  // x402-global-challenge tag on /verify + /settle. Without it, a real
+  // settled payment still succeeds (200 OK) but the facilitator has no
+  // discovery info to record: confirmed against the live facilitator, see
+  // docs/PAYMENT_FLOW.md's "Bazaar discovery" section.
+  ...(paymentRequired.extensions ? { extensions: paymentRequired.extensions } : {}),
 };
 const header = Buffer.from(JSON.stringify(paymentPayload), 'utf-8').toString('base64');
 

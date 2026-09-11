@@ -62,6 +62,19 @@ export const PaymentPayloadSchema = z.object({
   // before a provider ever offered more than one requirement.
   asset: z.string().optional(),
   payload: z.record(z.string(), z.unknown()),
+  // Verbatim echo of the 402 response's own `extensions` bag (see
+  // PaymentRequiredResponseSchema above) — a spec-compliant client copies it
+  // here unchanged so the facilitator can catalog the resource in the Bazaar
+  // and attribute a challenge tag on /verify + /settle (see
+  // docs/PAYMENT_FLOW.md's "Bazaar discovery" section). Without this field,
+  // `decodePaymentHeader`'s `.parse()` silently dropped any `extensions` a
+  // client sent (zod strips unknown keys by default) before it ever reached
+  // the facilitator — confirmed empirically: a real settled mainnet payment
+  // showed up on the facilitator's leaderboard with `bazaar:false,
+  // challenge:false` until this field (plus the client-side echo in
+  // agent-sdk/algorand-scheme.ts, x402-client.ts, and demo-payment.mjs) was
+  // added.
+  extensions: z.record(z.string(), z.unknown()).optional(),
 });
 export type PaymentPayload = z.infer<typeof PaymentPayloadSchema>;
 

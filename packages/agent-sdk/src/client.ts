@@ -246,7 +246,7 @@ export class AgentMarketClient {
     }
 
     this.emitEvent({ type: 'call:paying', resource, callId, priceUsd });
-    const payload = await this.config.paymentScheme.createPayload(requirement, paymentRequired.x402Version);
+    const payload = await this.config.paymentScheme.createPayload(requirement, paymentRequired.x402Version, paymentRequired.extensions);
     const paymentHeader = Buffer.from(JSON.stringify(payload)).toString('base64');
 
     const paidRes = await this.fetchImpl(url, {
