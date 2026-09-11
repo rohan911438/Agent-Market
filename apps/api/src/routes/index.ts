@@ -1,6 +1,8 @@
 import type { FastifyInstance } from 'fastify';
 import type { AppContext } from '../context.js';
 import { registerAnalyzeRoute } from './analyze.route.js';
+import { registerListingRoutes } from './control-plane/listings.route.js';
+import { registerProviderAccountRoutes } from './control-plane/provider-account.route.js';
 import { registerDashboardRoute } from './dashboard.route.js';
 import { registerExecutionReadinessRoute } from './execution-readiness.route.js';
 import { registerHealthRoute } from './health.route.js';
@@ -17,6 +19,10 @@ export function registerRoutes(server: FastifyInstance, ctx: AppContext): void {
   registerHealthRoute(server, ctx);
   registerMarketplaceRoute(server, ctx);
   registerDashboardRoute(server, ctx);
+
+  // Control plane — provider onboarding & self-service publishing (Phase 2)
+  registerProviderAccountRoutes(server, ctx);
+  registerListingRoutes(server, ctx);
 
   // Metered (x402-gated)
   registerAnalyzeRoute(server, ctx);

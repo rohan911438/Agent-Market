@@ -1,6 +1,11 @@
 import { PrismaClient } from '@prisma/client';
+import { createHash } from 'node:crypto';
 
 const prisma = new PrismaClient();
+
+/** Local-only demo credential so the seeded listing is exercisable against a freshly-seeded dev server. Never a real secret. */
+const DEMO_PROVIDER_API_KEY = 'amk_demo_ledgerwatch_local_seed_only';
+const DEMO_ALGORAND_ADDRESS = 'A'.repeat(58);
 
 const PROVIDERS = [
   { name: 'coingecko', capability: 'market-data', isKeyless: true },
@@ -102,7 +107,46 @@ async function main() {
     });
   }
 
-  console.log(`Seeded ${PROVIDERS.length} providers and ${MARKETPLACE_APIS.length} marketplace APIs.`);
+  // One demo third-party provider + published listing, so a freshly-seeded
+  // dev server shows the control-plane/publishing pipeline actually working
+  // end to end, not just AgentMarket's own first-party endpoints.
+  const demoProvider = await prisma.providerAccount.upsert({
+    where: { email: 'devrel@ledgerwatch.example' },
+    update: {},
+    create: {
+      name: 'Ledgerwatch Labs',
+      email: 'devrel@ledgerwatch.example',
+      walletAddress: DEMO_ALGORAND_ADDRESS,
+      apiKeyHash: createHash('sha256').update(DEMO_PROVIDER_API_KEY).digest('hex'),
+      status: 'verified',
+      verifiedAt: new Date(),
+    },
+  });
+
+  await prisma.apiListing.upsert({
+    where: { slug: 'chainscan-wallet-risk' },
+    update: {},
+    create: {
+      providerAccountId: demoProvider.id,
+      slug: 'chainscan-wallet-risk',
+      name: 'ChainScan — Wallet Risk Feed',
+      description:
+        'Flags wallets with elevated on-chain risk before a payout, scored from live Algorand transaction graphs.',
+      category: 'Risk & Compliance',
+      tags: JSON.stringify(['wallets', 'fraud', 'on-chain']),
+      upstreamUrl: 'https://api.ledgerwatch.example/v1/wallet-risk',
+      docsUrl: 'https://docs.ledgerwatch.example',
+      pricingModel: 'pay_per_call',
+      priceUsd: 0.03,
+      payoutWalletAddress: DEMO_ALGORAND_ADDRESS,
+      status: 'published',
+      publishedAt: new Date(),
+    },
+  });
+
+  console.log(
+    `Seeded ${PROVIDERS.length} providers, ${MARKETPLACE_APIS.length} marketplace APIs, and 1 demo third-party listing.`,
+  );
 }
 
 main()

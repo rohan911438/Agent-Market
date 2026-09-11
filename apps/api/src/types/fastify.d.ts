@@ -1,4 +1,5 @@
 import 'fastify';
+import type { ProviderAccount } from '@prisma/client';
 import type { ErrorCode, PaymentPayload, PaymentRequirement } from '@agentmarket/shared-types';
 
 declare module 'fastify' {
@@ -9,6 +10,8 @@ declare module 'fastify' {
       query?: unknown;
       body?: unknown;
     };
+    /** Set by the provider-auth preHandler once a Bearer API key resolves to an account. */
+    providerAccount?: ProviderAccount;
     paymentContext?: {
       paymentRef: string;
       payerAddress?: string;

@@ -10,6 +10,10 @@ export const ErrorCodeSchema = z.enum([
   'BUDGET_EXCEEDED',
   'NOT_FOUND',
   'PROVIDER_UNAVAILABLE',
+  'UNAUTHORIZED',
+  'FORBIDDEN',
+  'CONFLICT',
+  'PUBLISH_REQUIREMENTS_NOT_MET',
   'INTERNAL_ERROR',
 ]);
 export type ErrorCode = z.infer<typeof ErrorCodeSchema>;
