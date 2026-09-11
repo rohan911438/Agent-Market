@@ -22,6 +22,28 @@ function headerValue(raw: string | string[] | undefined): string | undefined {
 }
 
 const REPLAY_CACHE_TTL_SECONDS = 24 * 60 * 60;
+const ALGO_PRICE_CACHE_TTL_SECONDS = 60;
+const ALGO_PRICE_CACHE_KEY = 'x402:algo-usd-price';
+
+/**
+ * Live ALGO/USD price for offering a native-ALGO PaymentRequirement
+ * alongside the provider's primary (stablecoin) one — cached for a minute
+ * so every metered call (each of which calls this twice: the initial 402
+ * and the paid retry) doesn't hammer the price provider. Returns undefined
+ * (never throws) on any failure, so a flaky price feed only means the ALGO
+ * option is temporarily omitted from accepts[] — never a broken route.
+ */
+async function fetchAlgoUsdPrice(ctx: AppContext): Promise<number | undefined> {
+  try {
+    const { value } = await ctx.cache.getOrSet(ALGO_PRICE_CACHE_KEY, ALGO_PRICE_CACHE_TTL_SECONDS, async () => {
+      const result = await ctx.providerRegistry.fetchPrice('ALGO');
+      return result?.result.priceUsd ?? null;
+    });
+    return value ?? undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 /**
  * The x402 gate. On every metered route:
@@ -55,10 +77,15 @@ export function createX402PreHandler(
 ) {
   return async function x402PreHandler(request: FastifyRequest, reply: FastifyReply): Promise<void> {
     const resolvedMeta = typeof meta === 'function' ? await meta(request) : meta;
-    const { body: requiredBody, requirement } = ctx.paymentService.buildPaymentRequired(resolvedMeta.resource, resolvedMeta.priceUsd);
+    const algoUsdPrice = ctx.config.payments.enableNativeAlgo ? await fetchAlgoUsdPrice(ctx) : undefined;
+    const { body: requiredBody, requirements } = ctx.paymentService.buildPaymentRequired(
+      resolvedMeta.resource,
+      resolvedMeta.priceUsd,
+      algoUsdPrice,
+    );
     const header = headerValue(request.headers['x-payment']);
 
-    const incoming = await ctx.paymentService.processIncomingPayment(header, requirement);
+    const incoming = await ctx.paymentService.processIncomingPayment(header, requirements);
 
     if (incoming.kind === 'missing') {
       request.errorCode = 'PAYMENT_REQUIRED';
@@ -77,7 +104,7 @@ export function createX402PreHandler(
       throw new AppError('PAYMENT_VERIFICATION_FAILED', incoming.reason ?? 'Payment could not be verified', 402);
     }
 
-    const { paymentRef, payload, payerAddress } = incoming;
+    const { paymentRef, payload, payerAddress, requirement } = incoming;
     const cacheKey = `payment:${paymentRef}`;
 
     // Replay of an already-settled payment: serve the stored response, do nothing else.

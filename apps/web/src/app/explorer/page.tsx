@@ -8,9 +8,9 @@ import { Input } from '@/components/ui/input';
 import { JsonViewer } from '@/components/ui/json-viewer';
 import { Select } from '@/components/ui/select';
 import { callApi } from '@/lib/api-client';
-import { buildDemoPaymentHeader, buildRealPaymentHeader } from '@/lib/x402-client';
+import { NATIVE_ALGO_ASSET, buildDemoPaymentHeader, buildRealAlgoPaymentHeader, buildRealPaymentHeader } from '@/lib/x402-client';
 import { useWallet } from '@/lib/wallet-context';
-import type { PaymentRequiredResponse } from '@agentmarket/shared-types';
+import type { PaymentRequiredResponse, PaymentRequirement } from '@agentmarket/shared-types';
 import { AnimatePresence, motion } from 'framer-motion';
 import { AlertTriangle, ArrowRight, Hash, Send, ShieldCheck, Wallet, Zap } from 'lucide-react';
 import { useState } from 'react';
@@ -32,14 +32,21 @@ const ENDPOINTS: ExplorerEndpoint[] = [
   { path: '/v1/execution-readiness', label: 'Execution Readiness', price: 0.03, params: ['symbol'] },
 ];
 
-type FlowState = 'idle' | 'requesting' | 'signing' | 'paying' | 'success' | 'error';
+type FlowState = 'idle' | 'requesting' | 'choosing' | 'signing' | 'paying' | 'success' | 'error';
 
 const STEPS: { key: FlowState[]; label: string; icon: typeof Send }[] = [
   { key: ['requesting'], label: 'Request', icon: Send },
-  { key: ['signing'], label: 'Sign', icon: Wallet },
+  { key: ['choosing', 'signing'], label: 'Sign', icon: Wallet },
   { key: ['paying'], label: 'Pay & retry', icon: Zap },
   { key: ['success'], label: 'Response', icon: ShieldCheck },
 ];
+
+/** Friendly label for a PaymentRequirement's asset — USDC vs native ALGO. */
+function assetLabel(requirement: { asset: string; amount?: string; maxAmountRequired: string }): string {
+  const atomic = Number(requirement.amount ?? requirement.maxAmountRequired);
+  if (requirement.asset === NATIVE_ALGO_ASSET) return `${(atomic / 1_000_000).toFixed(4)} ALGO`;
+  return `${(atomic / 1_000_000).toFixed(2)} USDC`;
+}
 
 export default function ExplorerPage() {
   const { address, walletToken, setWalletToken, getSigner } = useWallet();
@@ -49,6 +56,7 @@ export default function ExplorerPage() {
   const [paymentRequirements, setPaymentRequirements] = useState<unknown>(null);
   const [response, setResponse] = useState<unknown>(null);
   const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState<{ path: string; x402Version: number; accepts: PaymentRequirement[] } | null>(null);
 
   const endpoint = ENDPOINTS[endpointIndex]!;
 
@@ -63,6 +71,7 @@ export default function ExplorerPage() {
     setError(null);
     setResponse(null);
     setPaymentRequirements(null);
+    setPending(null);
     setState('requesting');
 
     const path = buildPath();
@@ -89,7 +98,20 @@ export default function ExplorerPage() {
     }
 
     const { x402Version, accepts } = first.body as PaymentRequiredResponse;
-    const requirement = accepts[0]!;
+
+    if (accepts.length > 1) {
+      // More than one accepted payment asset (e.g. USDC and native ALGO) —
+      // let the user pick rather than silently defaulting to accepts[0].
+      setPending({ path, x402Version, accepts });
+      setState('choosing');
+      return;
+    }
+
+    await payWith(path, x402Version, accepts[0]!);
+  }
+
+  async function payWith(path: string, x402Version: number, requirement: PaymentRequirement): Promise<void> {
+    if (!address) return;
 
     let header: string;
     if (requirement.network === 'mock') {
@@ -108,7 +130,10 @@ export default function ExplorerPage() {
       }
       setState('signing');
       try {
-        header = await buildRealPaymentHeader(signer, x402Version, requirement);
+        header =
+          requirement.asset === NATIVE_ALGO_ASSET
+            ? await buildRealAlgoPaymentHeader(signer, x402Version, requirement)
+            : await buildRealPaymentHeader(signer, x402Version, requirement);
       } catch (err) {
         setError(
           `Signing was cancelled or failed: ${err instanceof Error ? err.message : String(err)}`,
@@ -209,14 +234,38 @@ export default function ExplorerPage() {
               </div>
             )}
 
-            <Button className="w-full" onClick={() => void runFlow()} loading={busy} icon={!busy ? <Send className="h-4 w-4" /> : undefined}>
+            <Button
+              className="w-full"
+              onClick={() => void runFlow()}
+              loading={busy}
+              disabled={state === 'choosing'}
+              icon={!busy ? <Send className="h-4 w-4" /> : undefined}
+            >
               {state === 'requesting' && 'Requesting…'}
               {state === 'signing' && 'Confirm in Pera Wallet…'}
               {state === 'paying' && 'Paying & retrying…'}
-              {!busy && 'Send request'}
+              {!busy && state !== 'choosing' && 'Send request'}
+              {state === 'choosing' && 'Choose a payment asset below'}
             </Button>
             {state === 'signing' && (
               <p className="text-center text-xs text-muted">Approve the payment in your Pera Wallet app.</p>
+            )}
+
+            {state === 'choosing' && pending && (
+              <div className="space-y-2 rounded-lg border border-border bg-surface-hover p-3">
+                <p className="text-xs text-muted">Pay with:</p>
+                {pending.accepts.map((requirement) => (
+                  <Button
+                    key={requirement.asset}
+                    variant="secondary"
+                    className="w-full justify-between"
+                    onClick={() => void payWith(pending.path, pending.x402Version, requirement)}
+                  >
+                    <span>{requirement.asset === NATIVE_ALGO_ASSET ? 'Native ALGO' : 'USDC'}</span>
+                    <span className="font-mono text-xs">{assetLabel(requirement)}</span>
+                  </Button>
+                ))}
+              </div>
             )}
           </CardBody>
         </Card>

@@ -38,6 +38,13 @@ export const PaymentPayloadSchema = z.object({
   x402Version: z.number().int(),
   scheme: z.string(),
   network: z.string(),
+  // Which of the 402 response's accepts[] entries this payload was built
+  // against — scheme+network alone can be identical across entries (e.g. two
+  // Algorand "exact" requirements, one in USDC one in native ALGO), so this
+  // is how the server picks the matching PaymentRequirement to verify/settle
+  // against. Optional and defaults to accepts[0] for older clients built
+  // before a provider ever offered more than one requirement.
+  asset: z.string().optional(),
   payload: z.record(z.string(), z.unknown()),
 });
 export type PaymentPayload = z.infer<typeof PaymentPayloadSchema>;

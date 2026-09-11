@@ -25,6 +25,18 @@ export interface AlgorandX402ProviderConfig {
 /** USDC on Algorand uses 6 decimal places. */
 const USDC_DECIMALS = 1_000_000;
 
+/** ALGO's own base unit (microAlgos) also uses 6 decimal places. */
+const ALGO_DECIMALS = 1_000_000;
+
+/**
+ * Sentinel `asset` value for a native-ALGO PaymentRequirement. Algorand's
+ * native currency isn't an ASA — it has no numeric asset id — so this is
+ * never passed to the facilitator as a real asset id; the client instead
+ * recognizes this exact string and builds a plain `Payment` transaction
+ * (no `AssetTransfer`) — see apps/web/src/lib/x402-client.ts.
+ */
+export const NATIVE_ALGO_ASSET = 'ALGO';
+
 /**
  * CAIP-2 chain identifiers for Algorand (genesis-hash-based, per
  * https://chainagnostic.org/CAIPs/caip-2). The legacy name-based identifiers
@@ -74,21 +86,47 @@ export class AlgorandX402Provider implements PaymentProvider {
     return ALGORAND_CAIP2_NETWORK[this.config.network];
   }
 
-  getRequirements(context: PaymentContext): PaymentRequirement {
-    const amount = Math.round(context.priceUsd * USDC_DECIMALS).toString();
-    return {
-      scheme: 'exact',
-      network: this.network(),
-      maxAmountRequired: amount,
-      amount,
-      resource: context.resource,
-      description: `Access to ${context.resource}`,
-      mimeType: 'application/json',
-      payTo: this.config.payToAddress,
-      asset: this.config.usdcAssetId,
-      maxTimeoutSeconds: 60,
-      extra: this.config.feePayerAddress ? { feePayer: this.config.feePayerAddress } : undefined,
-    };
+  getRequirements(context: PaymentContext): PaymentRequirement[] {
+    const usdcAmount = Math.round(context.priceUsd * USDC_DECIMALS).toString();
+    const requirements: PaymentRequirement[] = [
+      {
+        scheme: 'exact',
+        network: this.network(),
+        maxAmountRequired: usdcAmount,
+        amount: usdcAmount,
+        resource: context.resource,
+        description: `Access to ${context.resource}`,
+        mimeType: 'application/json',
+        payTo: this.config.payToAddress,
+        asset: this.config.usdcAssetId,
+        maxTimeoutSeconds: 60,
+        extra: this.config.feePayerAddress ? { feePayer: this.config.feePayerAddress } : undefined,
+      },
+    ];
+
+    // A second, native-ALGO requirement — only offered when a live ALGO/USD
+    // price was resolved (see apps/api's x402 middleware), since otherwise
+    // there is no correct amount to quote. Unlike the USDC leg above, this
+    // is a single native Payment transaction (no ASA, no atomic fee-payer
+    // group): the payer already needs ALGO to make the payment at all, so
+    // it can trivially cover its own ~0.001 ALGO network fee too.
+    if (context.algoUsdPrice && context.algoUsdPrice > 0) {
+      const algoAmount = Math.round((context.priceUsd / context.algoUsdPrice) * ALGO_DECIMALS).toString();
+      requirements.push({
+        scheme: 'exact',
+        network: this.network(),
+        maxAmountRequired: algoAmount,
+        amount: algoAmount,
+        resource: context.resource,
+        description: `Access to ${context.resource} (paid in native ALGO)`,
+        mimeType: 'application/json',
+        payTo: this.config.payToAddress,
+        asset: NATIVE_ALGO_ASSET,
+        maxTimeoutSeconds: 60,
+      });
+    }
+
+    return requirements;
   }
 
   async verify(payload: PaymentPayload, requirement: PaymentRequirement): Promise<PaymentVerifyResult> {
