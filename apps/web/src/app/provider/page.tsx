@@ -6,9 +6,11 @@ import { AnimatedCounter } from '@/components/ui/animated-counter';
 import { Button } from '@/components/ui/button';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Select } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from '@/components/ui/table';
 import {
   errorMessage,
+  getProviderAnalytics,
   getProviderMe,
   getProviderRevenue,
   listListings,
@@ -18,9 +20,9 @@ import {
 } from '@/lib/provider-api';
 import { useProviderSession } from '@/lib/provider-context';
 import { listingStatusBadge, providerStatusBadge, verificationTierBadge } from '@/lib/provider-status';
-import type { ApiListingView, ProviderAccountView, RevenueSummaryView } from '@agentmarket/shared-types';
+import type { AnalyticsRange, AnalyticsSummaryView, ApiListingView, ProviderAccountView, RevenueSummaryView } from '@agentmarket/shared-types';
 import { AnimatePresence, motion } from 'framer-motion';
-import { DollarSign, KeyRound, LogOut, Plus, RefreshCw, ShieldCheck, Store } from 'lucide-react';
+import { Activity, DollarSign, KeyRound, LogOut, Plus, RefreshCw, ShieldCheck, Store } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
@@ -307,12 +309,195 @@ function RevenueSection({ apiKey }: { apiKey: string }) {
   );
 }
 
+const RANGE_LABELS: Record<AnalyticsRange, string> = { '24h': 'Last 24 hours', '7d': 'Last 7 days', '30d': 'Last 30 days' };
+
+function AnalyticsSection({ apiKey }: { apiKey: string }) {
+  const [range, setRange] = useState<AnalyticsRange>('24h');
+  const [analytics, setAnalytics] = useState<AnalyticsSummaryView | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setAnalytics(null);
+    void getProviderAnalytics(apiKey, range).then((res) => {
+      if (!cancelled && res.status === 200) setAnalytics(res.body);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [apiKey, range]);
+
+  return (
+    <Card>
+      <CardHeader className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Activity className="h-4 w-4 text-primary" />
+          <CardTitle>Analytics</CardTitle>
+        </div>
+        <div className="w-40">
+          <Select value={range} onChange={(e) => setRange(e.target.value as AnalyticsRange)}>
+            {(Object.keys(RANGE_LABELS) as AnalyticsRange[]).map((r) => (
+              <option key={r} value={r}>
+                {RANGE_LABELS[r]}
+              </option>
+            ))}
+          </Select>
+        </div>
+      </CardHeader>
+      <CardBody>
+        {!analytics ? (
+          <div className="h-24 animate-pulse rounded-xl bg-surface-hover" />
+        ) : analytics.totals.requestCount === 0 ? (
+          <div className="py-6 text-center">
+            <p className="font-medium text-foreground">No traffic yet</p>
+            <p className="mx-auto mt-1 max-w-md text-sm text-muted">
+              Third-party listings aren&apos;t proxied through a live gateway yet, so there&apos;s no call-level data
+              to show. These numbers are accurate — not placeholders — and will populate the moment traffic starts
+              flowing.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-5">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <StatTile label="Requests" value={analytics.totals.requestCount} />
+              <StatTile label="Avg latency" value={analytics.totals.avgLatencyMs} suffix="ms" />
+              <StatTile label="p95 latency" value={analytics.totals.p95LatencyMs} suffix="ms" />
+              <StatTile label="Error rate" value={analytics.totals.errorRate * 100} decimals={1} suffix="%" />
+              <StatTile label="Cache hit rate" value={analytics.totals.cacheHitRate * 100} decimals={1} suffix="%" />
+              <StatTile
+                label="Payment success"
+                value={analytics.totals.paymentAttemptCount === 0 ? undefined : analytics.totals.paymentSuccessRate * 100}
+                decimals={1}
+                suffix={analytics.totals.paymentAttemptCount === 0 ? undefined : '%'}
+                fallback={analytics.totals.paymentAttemptCount === 0 ? 'No attempts yet' : undefined}
+              />
+            </div>
+
+            <div>
+              <h4 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-2">
+                Over time ({analytics.bucket === 'hour' ? 'hourly' : 'daily'})
+              </h4>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableHeaderCell>When</TableHeaderCell>
+                    <TableHeaderCell>Requests</TableHeaderCell>
+                    <TableHeaderCell>Avg latency</TableHeaderCell>
+                    <TableHeaderCell>p95</TableHeaderCell>
+                    <TableHeaderCell>Errors</TableHeaderCell>
+                    <TableHeaderCell>Cache hit</TableHeaderCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {analytics.points.map((point) => (
+                    <TableRow key={point.timestamp}>
+                      <TableCell className="text-muted">
+                        {analytics.bucket === 'hour'
+                          ? new Date(point.timestamp).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric' })
+                          : new Date(point.timestamp).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell className="text-foreground">{point.requestCount}</TableCell>
+                      <TableCell className="text-muted">{point.avgLatencyMs}ms</TableCell>
+                      <TableCell className="text-muted">{point.p95LatencyMs}ms</TableCell>
+                      <TableCell className="text-muted">{(point.errorRate * 100).toFixed(1)}%</TableCell>
+                      <TableCell className="text-muted">{(point.cacheHitRate * 100).toFixed(1)}%</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+
+            {analytics.topListings.length > 1 && (
+              <div>
+                <h4 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-2">Top listings</h4>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableHeaderCell>Listing</TableHeaderCell>
+                      <TableHeaderCell>Requests</TableHeaderCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {analytics.topListings.map((listing) => (
+                      <TableRow key={listing.listingId}>
+                        <TableCell>
+                          <div className="font-medium text-foreground">{listing.name}</div>
+                          <div className="font-mono text-xs text-muted-2">{listing.slug}</div>
+                        </TableCell>
+                        <TableCell className="text-muted">{listing.requestCount}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+
+            {analytics.topCustomers.length > 0 && (
+              <div>
+                <h4 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-2">Top customers</h4>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableHeaderCell>Wallet</TableHeaderCell>
+                      <TableHeaderCell>Requests</TableHeaderCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {analytics.topCustomers.map((customer) => (
+                      <TableRow key={customer.walletAddress}>
+                        <TableCell className="font-mono text-xs text-foreground">
+                          {customer.walletAddress.slice(0, 8)}…{customer.walletAddress.slice(-6)}
+                        </TableCell>
+                        <TableCell className="text-muted">{customer.requestCount}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </div>
+        )}
+      </CardBody>
+    </Card>
+  );
+}
+
+function StatTile({
+  label,
+  value,
+  decimals = 0,
+  suffix,
+  fallback,
+}: {
+  label: string;
+  value: number | undefined;
+  decimals?: number;
+  suffix?: string;
+  fallback?: string;
+}) {
+  return (
+    <div className="rounded-xl border border-border bg-surface-hover px-4 py-3">
+      <div className="text-xs font-medium uppercase tracking-wide text-muted-2">{label}</div>
+      <div className="mt-1 font-display text-xl font-bold tracking-tight text-foreground">
+        {value === undefined ? <span className="text-sm font-medium text-muted">{fallback}</span> : <AnimatedCounter value={value} decimals={decimals} suffix={suffix} />}
+      </div>
+    </div>
+  );
+}
+
+type DashboardTab = 'listings' | 'revenue' | 'analytics';
+const DASHBOARD_TABS: Array<{ key: DashboardTab; label: string }> = [
+  { key: 'listings', label: 'Listings' },
+  { key: 'revenue', label: 'Revenue' },
+  { key: 'analytics', label: 'Analytics' },
+];
+
 function ProviderDashboard({ apiKey }: { apiKey: string }) {
   const { clearSession, setSession } = useProviderSession();
   const [account, setAccount] = useState<ProviderAccountView | null>(null);
   const [listings, setListings] = useState<ApiListingView[] | null>(null);
   const [verifying, setVerifying] = useState(false);
   const [verifyError, setVerifyError] = useState<string | null>(null);
+  const [tab, setTab] = useState<DashboardTab>('listings');
 
   async function refresh(key: string): Promise<void> {
     const [me, ls] = await Promise.all([getProviderMe(key), listListings(key)]);
@@ -380,6 +565,20 @@ function ProviderDashboard({ apiKey }: { apiKey: string }) {
         )}
       </Card>
 
+      <div className="inline-flex rounded-lg border border-border bg-surface p-1">
+        {DASHBOARD_TABS.map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            onClick={() => setTab(t.key)}
+            className={`rounded-md px-3.5 py-1.5 text-sm font-medium transition-colors ${tab === t.key ? 'bg-surface-hover text-foreground' : 'text-muted hover:text-foreground'}`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'listings' && (
       <Card>
         <CardHeader className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -445,8 +644,10 @@ function ProviderDashboard({ apiKey }: { apiKey: string }) {
           )}
         </CardBody>
       </Card>
+      )}
 
-      <RevenueSection apiKey={apiKey} />
+      {tab === 'revenue' && <RevenueSection apiKey={apiKey} />}
+      {tab === 'analytics' && <AnalyticsSection apiKey={apiKey} />}
     </div>
   );
 }
