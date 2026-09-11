@@ -102,6 +102,13 @@ const ApiEnvSchema = z
           message: 'ADMIN_API_KEY must be set to a real secret when NODE_ENV=production',
         });
       }
+      if (env.CORS_ORIGIN === 'http://localhost:3000') {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['CORS_ORIGIN'],
+          message: 'CORS_ORIGIN must be set to the real frontend origin when NODE_ENV=production — the dev default blocks it rather than allowing it, but it means the app boots pointed at the wrong origin instead of failing loudly here.',
+        });
+      }
     }
   });
 
