@@ -4,7 +4,7 @@
 
 AI agents, trading bots, and autonomous applications discover, purchase, and consume
 decision-intelligence endpoints through HTTP 402 micropayments — no subscriptions, no
-end-user API keys, no monthly billing. Every call is an on-chain payment.
+end-user API keys, no monthly billing. Every call is a real, on-chain payment.
 
 Instead of `BTC Price = $120,000`, AgentMarket returns:
 
@@ -34,19 +34,123 @@ The API explains **why**.
 
 The API runs on Render's free plan (Docker, SQLite on ephemeral disk — data resets on
 redeploy). The web app is a Vercel deployment of `apps/web`, pointed at the Render API via
-`NEXT_PUBLIC_API_URL`. The Vercel deployment currently sits behind Vercel's default
-deployment-protection SSO gate; disable it in the project's Deployment Protection settings
-to make it publicly reachable.
+`NEXT_PUBLIC_API_URL`. Both redeploy automatically on push to `main` — see
+[CI/CD & Deployment](#cicd--deployment) below.
 
 ## Status
 
-Phase 1 MVP. `/analyze`, `/market-summary`, `/sentiment`, `/risk-analysis`,
-`/trending-assets`, `/execution-readiness`, and `/portfolio-health` run on real market
-data end-to-end. `/technical-summary` is real when OHLC data is available, otherwise
-marked `"status": "beta"` in its response — see [docs/API.md](docs/API.md) for the exact
-contract of every endpoint. See [docs/ROADMAP.md](docs/ROADMAP.md) for what's next.
+All 13 platform-strategy phases are shipped — see [Platform capabilities](#platform-capabilities)
+and [phases/README.md](phases/README.md) for the full ledger. Core intelligence endpoints
+(`/analyze`, `/market-summary`, `/sentiment`, `/risk-analysis`, `/trending-assets`,
+`/execution-readiness`, `/portfolio-health`) run on real market data end-to-end.
+`/technical-summary` is real when OHLC data is available, otherwise marked `"status":
+"beta"` in its response — see [docs/API.md](docs/API.md) for the exact contract of every
+endpoint, and [docs/ROADMAP.md](docs/ROADMAP.md) for what's next.
 
-## Quickstart
+## Why AgentMarket
+
+An autonomous agent can't fill out a signup form, hold an API key securely, or approve a
+recurring subscription. It *can* sign a transaction. x402 turns "pay to access" into a
+native HTTP mechanic (`402 Payment Required` → sign → retry → `200`), so AgentMarket sells
+intelligence the way an agent actually consumes the internet: one metered call at a time,
+paid for the instant it's needed, with the reasoning behind the answer included — not just
+a number the agent would have to re-derive a decision from.
+
+## Architecture
+
+### System overview
+
+```mermaid
+flowchart LR
+    subgraph Vercel
+        Web[apps/web — Next.js 16]
+    end
+    subgraph Render
+        Api[apps/api — Fastify 5]
+        DB[(SQLite / Postgres)]
+    end
+    subgraph External
+        Facilitator[x402 Facilitator]
+        Providers[CoinGecko / Binance / Alternative.me / DefiLlama]
+        Chain[Algorand TestNet]
+    end
+    Web -->|HTTPS, never sees provider creds| Api
+    Api --> DB
+    Api --> Facilitator
+    Facilitator --> Chain
+    Api --> Providers
+```
+
+### Request pipeline
+
+```mermaid
+flowchart LR
+    Client[Client / AI Agent] --> Gateway[Fastify API]
+    Gateway --> Validate[preValidation: zod schema]
+    Validate --> RateLimit[Rate Limiter]
+    RateLimit --> Payment[x402 Payment Gate]
+    Payment --> Cache{Cache hit?}
+    Cache -- yes --> Formatter[Response Formatter]
+    Cache -- no --> Engine[Intelligence Engine]
+    Engine --> Providers[Provider Registry]
+    Providers --> Formatter
+    Formatter --> Audit[Audit / ApiRequest log]
+    Audit --> Client
+```
+
+Validation runs **before** the payment gate deliberately: an invalid request must fail for
+free. If validation ran inside the handler (after payment), a malformed request would
+still consume a settled payment before failing.
+
+### Package boundaries
+
+| Package | Responsibility | Depends on |
+|---|---|---|
+| `shared-types` | zod schemas + inferred types for every API contract | — |
+| `secrets` | `SecretManager` — validated, typed, redaction-safe env access | — |
+| `config` | Per-app env schema + typed config loader | `secrets` |
+| `cache` | `ICache` + `MemoryCache` (default) + `RedisCache` (opt-in, inert until wired) | — |
+| `database` | Prisma schema, generated client, one repository class per table | — |
+| `providers` | `ApiProviderRegistry` — capability adapters with fallback + circuit breaker | — |
+| `payments` | `PaymentProvider` abstraction — x402 protocol logic, provider-agnostic | `shared-types` |
+| `intelligence-engine` | The scoring/reasoning pipeline (8 stages) | `providers`, `shared-types` |
+| `apps/api` | Fastify HTTP layer: routes, middleware, persistence orchestration | all of the above |
+| `apps/web` | Next.js frontend | `shared-types` (contracts only) |
+
+Every package exposes an interface at its boundary (`ProviderAdapter`, `PaymentProvider`,
+`ICache`, `Explainer`) so a new implementation can be swapped in via configuration, never
+by editing call sites. Full detail, including the intelligence-engine pipeline and
+provider fallback-chain diagrams, is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+## Workflows
+
+### Payment workflow (x402 on Algorand)
+
+```mermaid
+sequenceDiagram
+    participant Agent as AI Agent / Client
+    participant API as AgentMarket API
+    participant Fac as x402 Facilitator
+    participant Chain as Algorand
+
+    Agent->>API: GET /v1/analyze?symbol=BTC
+    API-->>Agent: 402 Payment Required + PaymentRequirements
+    Agent->>Agent: construct + sign payment (X-PAYMENT payload)
+    Agent->>API: GET /v1/analyze?symbol=BTC (X-PAYMENT: base64 payload)
+    API->>Fac: POST /verify
+    Fac-->>API: { isValid: true, payer }
+    API->>Fac: POST /settle
+    Fac->>Chain: broadcast payment
+    Fac-->>API: { success: true, transactionId }
+    API-->>Agent: 200 OK + structured JSON
+```
+
+Every payment reference is idempotency-protected by a unique DB constraint — a replayed
+`X-PAYMENT` header returns the original cached response instead of re-settling. Full
+sequence, both payment-provider modes (`mock` for local dev, `algorand-x402` for real
+settlement), and the replay-protection mechanics: [docs/PAYMENT_FLOW.md](docs/PAYMENT_FLOW.md).
+
+### Local dev workflow
 
 ```bash
 git clone <this-repo>
@@ -54,22 +158,109 @@ cd agentmarket
 npm install
 npm run bootstrap   # copies .env.example -> .env, generates/migrates/seeds the DB
 
-# Run everything (API on :4000, web on :3000)
-npm run dev
+npm run dev          # API on :4000, web on :3000, both hot-reloading
 ```
 
-No external API keys are required to run Phase 1 — every default market-data provider
-(CoinGecko, Binance, Alternative.me, DefiLlama) is keyless, and the payment provider
-defaults to an in-process mock so the full 402 → pay → 200 flow works immediately. See
-[docs/INSTALLATION.md](docs/INSTALLATION.md) for the real Algorand TestNet path and
-[docs/DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md) for shipping it.
+No external API keys are required — every default market-data provider (CoinGecko,
+Binance, Alternative.me, DefiLlama) is keyless, and `PAYMENT_PROVIDER` defaults to an
+in-process mock so the full 402 → pay → 200 flow works immediately, including from the
+web app's API Explorer. See [docs/INSTALLATION.md](docs/INSTALLATION.md) for the real
+Algorand TestNet path.
+
+Optional local infra (`docker-compose.yml`) adds Redis and/or Postgres for parity with a
+scaled-up setup — not required for Phase 1 dev, which runs on SQLite + an in-memory cache.
+
+### CI/CD & Deployment
+
+**CI** (`.github/workflows/ci.yml`) runs on every push/PR to `main`: install →
+production-dependency audit → generate Prisma client → schema-drift check → lint →
+typecheck → build → test — across the whole monorepo via Turborepo's dependency-aware
+task graph, plus a separate `dependency-review` job on PRs that fails on newly introduced
+high-severity or license-incompatible dependencies.
+
+**Deploys are git-triggered on both sides:**
+
+```mermaid
+flowchart LR
+    Dev[git push origin main] --> GH[GitHub: rohan911438/Agent-Market]
+    GH -->|webhook| Render[Render: rebuilds apps/api/Dockerfile]
+    GH -->|GitHub App| Vercel[Vercel: rebuilds apps/web, root=apps/web]
+    Render --> ApiLive[API redeployed]
+    Vercel --> WebLive[Web redeployed]
+```
+
+- **Backend → Render.** Builds `apps/api/Dockerfile` directly, driven by `render.yaml` at
+  the repo root (`runtime: docker`). Connect the repo as a Render Blueprint and it picks
+  up `render.yaml` — only the `sync: false` secrets need to be supplied manually.
+- **Frontend → Vercel.** Project's **Root Directory** is set to `apps/web`;
+  `apps/web/vercel.json` supplies install/build commands that reach back to the repo root
+  so npm workspaces resolve correctly in a monorepo.
+
+Full production env-var lists and the SQLite → Postgres migration path:
+[docs/DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md).
+
+## Platform capabilities
+
+All 13 phases of the platform strategy are done — this isn't just the pricing API, it's a
+full two-sided marketplace with agent-native discovery protocols on top.
+
+| # | Capability | Where |
+|---|---|---|
+| 01 | Control-plane API (provider accounts, listings) | `apps/api/src/routes/control-plane/` |
+| 02 | Provider dashboard UI | `apps/web/src/app/provider/` |
+| 03 | Agent SDK (TypeScript) | `packages/agent-sdk` |
+| 04 | Protocol-native catalog (OpenAPI + MCP) | `apps/api/src/routes/catalog/` |
+| 05 | A2A protocol support (agent card + task lifecycle) | `apps/api/src/routes/a2a/` |
+| 06 | Agent SDK (Python) | `packages/agent-sdk-python` |
+| 07 | Revenue platform (provider payouts, ledger) | `apps/api/src/services/revenue.ts` |
+| 08 | Trust & verification ladder | `apps/api/src/services/trust-score.ts` |
+| 09 | Analytics | `apps/api/src/services/analytics.ts` |
+| 10 | Marketplace storefront | `apps/web/src/app/marketplace/` |
+| 11 | AI-native discovery/ranking | `apps/api/src/routes/discover.route.ts` |
+| 12 | Orchestration engine (multi-step workflows) | `apps/api/src/routes/workflows.route.ts` |
+| 13 | Observability (OTel tracing, availability, status page) | `apps/api/src/observability/`, `apps/web/src/app/status/` |
+
+See [phases/README.md](phases/README.md) for the per-phase implementation record.
+
+## API surface
+
+Full request/response contracts: [docs/API.md](docs/API.md). Summary:
+
+| Category | Routes |
+|---|---|
+| Free | `GET /health`, `GET /v1/marketplace`, `GET /v1/dashboard`, `GET /v1/discover` |
+| Metered intelligence | `GET /v1/analyze` ($0.05) · `/v1/market-summary` ($0.02) · `/v1/sentiment` ($0.02) · `/v1/risk-analysis` ($0.03) · `/v1/technical-summary` ($0.03) · `/v1/trending-assets` ($0.02) · `POST /v1/portfolio-health` ($0.04) · `/v1/execution-readiness` ($0.03) |
+| Orchestration | `POST /v1/workflows/execute` — compose multiple metered endpoints into one call |
+| Provider control-plane | `POST/GET/PATCH /v1/listings*`, `/v1/providers/register`, `/v1/providers/me`, `/v1/providers/me/revenue`, `/v1/providers/me/analytics`, `/v1/providers/api-key/rotate` |
+| Admin | `/v1/admin/collections`, `/v1/admin/providers/:id/security-audit` |
+| Protocol-native discovery | `GET /.well-known/agent.json` (A2A agent card) · `GET /.well-known/mcp.json` + `POST /mcp` (Model Context Protocol) · `GET /v1/catalog/openapi.json` · per-listing OpenAPI/Postman specs |
+
+Every metered response includes a `meta` envelope (`requestId`, `cacheHit`, `providers`,
+`latencyMs`) and errors share one shape (`{ error: { code, message, requestId } }`). Rate
+limits: 30 req/min anonymous (by IP), 300 req/min for a wallet verified via a settled
+payment.
+
+## Frontend
+
+`apps/web` (Next.js 16, Tailwind v4):
+
+| Route | Purpose |
+|---|---|
+| `/` | Landing page |
+| `/explorer` | API Explorer — call any metered endpoint from the browser, wallet-signed |
+| `/marketplace` | Storefront — browse every listed API across providers |
+| `/dashboard` | Wallet usage/spend summary + recent requests |
+| `/provider` | Provider console — manage listings, pricing, revenue, analytics |
+| `/docs` | In-app API documentation |
+| `/pricing` | Pricing breakdown per endpoint |
+| `/status` | Public status page — live availability, synthetic monitoring |
 
 ## On-chain payment details (Algorand TestNet)
 
-Every metered call settles as a real, verifiable Algorand TestNet transaction — no
-mocked ledger. The `exact` x402 scheme currently in use is a USDC (ASA) transfer,
-optionally split into a 2-transaction atomic group when the facilitator sponsors the
-payer's network fee.
+Every metered call settles as a real, verifiable Algorand TestNet transaction — no mocked
+ledger. The `exact` x402 scheme currently in use is a USDC (ASA) transfer, optionally
+split into a 2-transaction atomic group when the facilitator sponsors the payer's network
+fee.
 
 | | Address / ID | Explorer |
 |---|---|---|
@@ -106,16 +297,17 @@ npm install @rohankumar4179/agent-sdk
 pip install agentmarket-sdk
 ```
 
-Until the Python package's first publish lands, install it straight from source:
-clone the repo, then `pip install ./packages/agent-sdk-python`.
+Until the Python package's first publish lands, install it straight from source: clone
+the repo, then `pip install ./packages/agent-sdk-python`.
 
 ## Project structure
 
 ```
 agentmarket/
   apps/
-    web/                 Next.js frontend — landing, API Explorer, dashboard, docs
-    api/                 Fastify backend — REST API
+    web/                 Next.js frontend — landing, API Explorer, marketplace, dashboard,
+                          provider console, docs, status page
+    api/                 Fastify backend — REST API, control-plane, A2A/MCP protocol routes
   packages/
     shared-types/        zod schemas + inferred TS types (API contracts, shared FE/BE)
     secrets/              SecretManager — typed, validated, redaction-safe env access
@@ -126,8 +318,11 @@ agentmarket/
     payments/                PaymentProvider abstraction — x402 on Algorand, pluggable
     intelligence-engine/     normalize → collect → merge → score → recommend →
                              confidence → explain → format pipeline
+    agent-sdk/               TypeScript client SDK (npm: @rohankumar4179/agent-sdk)
+    agent-sdk-python/        Python client SDK
   docs/                     Full documentation set (see below)
-  scripts/                  Dev bootstrap helpers
+  phases/                   Per-phase implementation record (all 13 done)
+  scripts/                  Dev bootstrap + TestNet demo scripts
 ```
 
 ## Documentation
@@ -143,11 +338,17 @@ agentmarket/
 - [Threat Model](docs/THREAT_MODEL.md)
 - [Roadmap](docs/ROADMAP.md)
 - [Contributing](docs/CONTRIBUTING.md)
+- [Pitch script](docs/PITCH_SCRIPT.md)
 
 ## Tech stack
 
 TypeScript everywhere · Next.js 16 + Tailwind v4 (frontend) · Fastify 5 (backend) ·
-Prisma + SQLite (Postgres-ready) · x402 on Algorand · npm workspaces + Turborepo.
+Prisma + SQLite (Postgres-ready) · x402 on Algorand · OpenTelemetry · npm workspaces +
+Turborepo · GitHub Actions CI · Render (API) + Vercel (web) for deployment.
+
+## Contributing
+
+See [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md).
 
 ## License
 
