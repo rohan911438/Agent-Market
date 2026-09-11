@@ -22,6 +22,16 @@ export interface AlgorandX402ProviderConfig {
   feePayerAddress?: string;
 }
 
+/**
+ * Every facilitator HTTP call gets this timeout. Without one, a slow or
+ * hung facilitator holds the request (and the Fastify connection serving
+ * it) open indefinitely — under any real load that's a resource-exhaustion
+ * path, not just a slow response. 20s comfortably covers a real
+ * verify/settle round trip without letting one bad facilitator response
+ * pin a connection forever.
+ */
+const FACILITATOR_TIMEOUT_MS = 20_000;
+
 /** USDC on Algorand uses 6 decimal places. */
 const USDC_DECIMALS = 1_000_000;
 
@@ -138,6 +148,7 @@ export class AlgorandX402Provider implements PaymentProvider {
         paymentPayload: payload,
         paymentRequirements: requirement,
       }),
+      signal: AbortSignal.timeout(FACILITATOR_TIMEOUT_MS),
     });
 
     if (!res.ok) {
@@ -164,6 +175,7 @@ export class AlgorandX402Provider implements PaymentProvider {
         paymentPayload: payload,
         paymentRequirements: requirement,
       }),
+      signal: AbortSignal.timeout(FACILITATOR_TIMEOUT_MS),
     });
 
     if (!res.ok) {
