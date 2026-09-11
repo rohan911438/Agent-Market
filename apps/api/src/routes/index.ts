@@ -14,6 +14,7 @@ import { registerListingRoutes } from './control-plane/listings.route.js';
 import { registerProviderAccountRoutes } from './control-plane/provider-account.route.js';
 import { registerProviderRevenueRoutes } from './control-plane/revenue.route.js';
 import { registerDashboardRoute } from './dashboard.route.js';
+import { registerDiscoverRoute } from './discover.route.js';
 import { registerExecutionReadinessRoute } from './execution-readiness.route.js';
 import { registerHealthRoute } from './health.route.js';
 import { registerMarketSummaryRoute } from './market-summary.route.js';
@@ -29,6 +30,7 @@ export function registerRoutes(server: FastifyInstance, ctx: AppContext): void {
   registerHealthRoute(server, ctx);
   registerMarketplaceRoute(server, ctx);
   registerDashboardRoute(server, ctx);
+  registerDiscoverRoute(server, ctx); // AI Discovery — ranked search (Phase 11)
 
   // Control plane — provider onboarding & self-service publishing (Phase 2)
   registerProviderAccountRoutes(server, ctx);

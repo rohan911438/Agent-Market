@@ -20,6 +20,8 @@ export type {
   BudgetConfig,
   CallOptions,
   CallParams,
+  CapabilitySearchQuery,
+  CapabilitySearchResult,
   CostEstimate,
   DiscoverQuery,
   MarketplaceListing,

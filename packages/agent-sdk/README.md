@@ -77,6 +77,7 @@ const sentiment = await agent.call<{ score: number; label: string }>('/v1/sentim
 | **Smart retries** | Retries 5xx, 429 (respecting a `Retry-After`-style hint), and network errors. Does **not** retry 4xx validation failures or a rejected payment signature — those fail identically twice, so retrying just delays the real error. `PAYMENT_ALREADY_SETTLED` (a concurrent-request race, not a real failure) *is* retried. |
 | **Fallback APIs** | `.call(primary).fallback(secondary).fallback(tertiary)` — tries each in order, stops at the first success. |
 | **Provider selection** | `agent.discover({ category, maxPriceUsd, search })` filters the public catalog (`/v1/marketplace`) and sorts by price. Simple filtering, not semantic ranking. |
+| **AI Discovery** | `agent.findCapability({ task, constraints })` states a job in natural language instead of a keyword query — ranks the catalog by relevance (TF-IDF), provider trust, and constraint fit (`maxLatencyMs`, `maxCostPerCall`), returning each result with a `score` and `reasons` explaining why it ranked where it did. See `apps/api/src/services/discovery-ranking.ts` for the documented formula. |
 | **Usage tracking** | `agent.getUsageSummary()` — total calls, total spend, broken down per resource. Local to this process; not a replacement for the server's own dashboard. |
 | **Response caching** | `cacheTtlMs` on the client, or `noCache: true` per call to bypass it. Off by default. |
 | **Multi-agent coordination** | `createSharedBudget(config)` — one `Budget`, many `AgentMarketClient`s. |
@@ -142,6 +143,18 @@ const agent = new AgentMarketClient({
 ```ts
 const cheap = await agent.discover({ category: 'Financial Intelligence', maxPriceUsd: 0.03 });
 // -> sorted by price ascending
+```
+
+## AI Discovery
+
+```ts
+const results = await agent.findCapability({
+  task: 'flag wallets with elevated risk before a payout',
+  constraints: { maxCostPerCall: 0.05 },
+});
+// -> ranked best-to-worst; each result carries `score` and `reasons`
+const best = results[0];
+console.log(best.listing.name, best.score, best.reasons);
 ```
 
 ## Development
