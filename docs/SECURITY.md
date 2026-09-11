@@ -31,7 +31,12 @@
 See [PAYMENT_FLOW.md](PAYMENT_FLOW.md) for the full idempotency/replay design. In
 summary: `Payment.paymentRef` has a DB-level unique constraint, so duplicate/replayed
 payments cannot double-settle even under concurrent requests, and a daily per-wallet
-spend cap bounds worst-case exposure to a compromised or runaway agent.
+spend cap bounds worst-case exposure to a compromised or runaway agent. The cap itself
+is enforced by a single atomic conditional UPDATE
+(`WalletRepository.reserveDailySpend`), not a read-then-compare — two concurrent
+payments for the same wallet can never both observe "under the cap" and both proceed.
+A reservation is released if the payment then fails or turns out to be a duplicate, so
+a failed attempt never permanently eats into the cap.
 
 ## Input validation
 
@@ -44,9 +49,13 @@ rejected with `400 PAYMENT_INVALID` before any facilitator call is made.
 
 Token-bucket rate limiting (anonymous-by-IP, promoted to a higher wallet-verified tier
 only after a real settled payment) plus per-wallet daily spend caps are the two layers
-protecting against request floods and runaway spend. See
-[THREAT_MODEL.md](THREAT_MODEL.md) for the full enumeration of abuse scenarios
-considered.
+protecting against request floods and runaway spend. Applied globally to every route
+(a single hook in `server.ts`), not just the x402-metered ones — free endpoints
+(marketplace listing, provider registration, discovery search) are equally covered, so
+they can't be spammed or used to write unlimited `ProviderAccount` rows for free. Only
+`/health` is exempt, so uptime/load-balancer probes never fail or eat into real
+traffic's budget. See [THREAT_MODEL.md](THREAT_MODEL.md) for the full enumeration of
+abuse scenarios considered.
 
 ## Dependency scanning
 
@@ -64,15 +73,23 @@ accident — see "Known gaps" below for what that currently excludes and why.
   transitive build tooling (`vitest`/`vite`/`esbuild` via `@vitest/coverage-v8`,
   Prisma CLI, Turbo) — none are in the runtime dependency graph of `apps/api` or
   `apps/web`, which is why CI's audit gate is scoped to `--omit=dev`.
-- `next` (a real production dependency of `apps/web`) currently bundles vulnerable
-  transitive `postcss`/`sharp` versions (3 high-severity advisories: XSS via
-  unescaped `</style>` in PostCSS's CSS stringify output, sourcemap path
-  traversal, and libvips CVEs in `sharp`). `npm audit fix --force` resolves this
-  by *downgrading* to `next@9.3.3`, which is not a real fix — the correct
-  remediation is upgrading `next` past the version that pulls in patched
-  `postcss`/`sharp`, tracked separately. This is why CI's audit gate is
-  currently `critical` rather than `high`; ratchet it back up to `high` once
-  this is resolved.
+- ~~`next` bundles vulnerable transitive `postcss`/`sharp`~~ — fixed: bumped
+  `next` (`^16.2.12` → `^16.3.2`, which vendors a patched `postcss`) and the
+  top-level `postcss` devDependency to the same patched line.
+- `npm audit --omit=dev` still reports 3 high-severity findings after that fix,
+  none with a non-breaking resolution available (`npm audit fix` alone doesn't
+  move them; forcing would pull breaking major bumps of packages several
+  layers removed from anything this repo calls directly):
+  - `fast-uri` (host-confusion via backslash authority introducer) via
+    Fastify's `fast-json-stringify`/`ajv` response-serialization path.
+  - `nanoid` (indefinite loop on a zero-size custom generator) — this repo
+    never calls a custom-size generator, so the vulnerable code path isn't
+    reachable, but the dependency itself is still flagged.
+  - `deepmerge-ts` via `@prisma/config` → `prisma` — the Prisma CLI, which
+    only runs at build/migrate time, not in the running server.
+  This is why CI's audit gate is `critical` rather than `high` — ratchet it
+  back up once these three are resolved upstream (Dependabot will surface the
+  patched versions once fastify/ajv/prisma release them).
 - The default `CACHE_DRIVER=memory` cache/rate-limiter is single-process. Set
   `CACHE_DRIVER=redis` + `REDIS_URL` for a multi-instance deployment — this is now
   fully wired (`apps/api/src/build-context.ts` constructs a real `ioredis` client),
@@ -80,3 +97,14 @@ accident — see "Known gaps" below for what that currently excludes and why.
 - CSRF is not a concern for this API (no cookie-based session state; every metered
   request must carry its own payment proof), but a browser-based admin panel added
   later would need to reconsider this.
+- **`apps/api/Dockerfile`'s runtime image still boots on SQLite** (`file:./prod.db`,
+  no volume mounted) even though `render.yaml`/`DEPLOYMENT_GUIDE.md` describe Postgres
+  as the production target and `docker-compose.yml` already provisions a local Postgres
+  profile for it. Two consequences until the migration in
+  [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md#migrating-sqlite--postgres) is actually
+  carried out: (1) every deploy/restart on a platform that doesn't persist the
+  container filesystem wipes the database — there is no data durability guarantee
+  today; (2) SQLite is a single-writer file, so the API cannot run more than one
+  instance — it cannot scale horizontally as-is. This is the single biggest
+  scalability limitation in the current deployment and should be treated as a
+  prerequisite for any real production traffic, not a nice-to-have.

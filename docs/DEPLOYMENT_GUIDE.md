@@ -22,11 +22,19 @@ the repo in the Render dashboard and it picks up `render.yaml` as a Blueprint �
 service configuration needed beyond the `sync: false` env vars below, which Render will
 prompt for.
 
+**Do the "Migrating SQLite → Postgres" step below *before* your first real production
+deploy.** As shipped, `apps/api/Dockerfile`'s runtime image still boots on a local
+SQLite file (`file:./prod.db`) with no volume mounted — every deploy/restart wipes the
+database, and SQLite can't support more than one running instance. Pointing
+`DATABASE_URL` at a real Postgres connection string does **not** work by itself: the
+Prisma schema's `datasource provider` is hardcoded to `sqlite`, so the app will fail to
+boot against a `postgres://` URL until that's changed (step 1 below).
+
 Required environment variables in production:
 
 ```
 NODE_ENV=production
-DATABASE_URL=<postgres connection string — see migration note below>
+DATABASE_URL=<postgres connection string — after completing the migration below>
 PAYMENT_PROVIDER=algorand-x402
 ALGORAND_NETWORK=testnet   # or mainnet, once ready
 X402_FACILITATOR_URL=...
@@ -41,7 +49,9 @@ verifies and settles every payment unconditionally.
 ## Migrating SQLite → Postgres
 
 The Prisma schema (`packages/database/prisma/schema.prisma`) uses no SQLite-only
-features. To move to Postgres:
+features. `docker-compose.yml` already provisions a local Postgres profile
+(`docker compose --profile postgres up -d`) for testing this migration before it goes
+anywhere near production. To move to Postgres:
 
 1. Change the datasource provider:
    ```prisma
@@ -51,7 +61,15 @@ features. To move to Postgres:
    }
    ```
 2. Point `DATABASE_URL` at your Postgres instance.
-3. Run `npx prisma migrate deploy` from `packages/database`.
+3. Regenerate migrations against Postgres and verify the full suite against it —
+   SQLite and Postgres differ enough (e.g. `RedefineTables` vs `ALTER TABLE`, raw-SQL
+   quoting) that the existing SQLite migration history can't just be replayed as-is.
+   Run `npx prisma migrate dev` from `packages/database` against your local Postgres
+   profile to generate a fresh, provider-correct migration history, then
+   `npx prisma migrate deploy` in each real environment.
+4. Only then does `apps/api/Dockerfile` need to change: drop the
+   "SQLite file, no volume mounted" comment/behavior and confirm `docker-entrypoint.sh`'s
+   `prisma migrate deploy` runs cleanly against the real `DATABASE_URL`.
 
 ## CI
 
