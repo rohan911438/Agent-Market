@@ -1,10 +1,16 @@
 'use client';
 
+import { AnimatedCounter } from '@/components/ui/animated-counter';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { SkeletonRow } from '@/components/ui/skeleton';
+import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from '@/components/ui/table';
 import { callApi } from '@/lib/api-client';
 import { useWallet } from '@/lib/wallet-context';
+import { motion } from 'framer-motion';
+import { Activity, ClipboardList, DollarSign, LayoutDashboard, Search, ShieldCheck } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 interface UsageRow {
@@ -59,22 +65,27 @@ export default function DashboardPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-12">
-      <h1 className="text-2xl font-semibold text-white">Dashboard</h1>
+      <div className="flex items-center gap-2.5">
+        <LayoutDashboard className="h-6 w-6 text-primary" />
+        <h1 className="font-display text-4xl font-bold tracking-tight text-foreground">Dashboard</h1>
+      </div>
       <p className="mt-2 max-w-2xl text-muted">
-        Usage and spend for a wallet, pulled straight from the same Payment/ApiRequest tables the API
-        writes on every metered call.
+        Usage and spend for a wallet, pulled straight from the same Payment/ApiRequest tables the API writes on
+        every metered call.
       </p>
 
       <Card className="mt-6">
         <CardBody className="flex flex-col gap-3 sm:flex-row">
-          <input
-            className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm text-white"
-            placeholder="Algorand wallet address"
-            value={walletInput}
-            onChange={(e) => setWalletInput(e.target.value)}
-          />
-          <Button onClick={() => void load(walletInput)} disabled={loading || !walletInput}>
-            {loading ? 'Loading…' : 'Look up'}
+          <div className="flex-1">
+            <Input
+              icon={<Search className="h-4 w-4" />}
+              placeholder="Algorand wallet address"
+              value={walletInput}
+              onChange={(e) => setWalletInput(e.target.value)}
+            />
+          </div>
+          <Button onClick={() => void load(walletInput)} loading={loading} disabled={!walletInput}>
+            Look up
           </Button>
         </CardBody>
       </Card>
@@ -86,73 +97,86 @@ export default function DashboardPage() {
       )}
 
       {data && (
-        <div className="mt-6 space-y-6">
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }} className="mt-6 space-y-6">
           <div className="grid gap-4 sm:grid-cols-3">
             <Card>
               <CardBody>
-                <p className="text-xs text-muted">Total spend</p>
-                <p className="mt-1 text-2xl font-semibold text-white">${data.totalSpendUsd.toFixed(4)}</p>
-              </CardBody>
-            </Card>
-            <Card>
-              <CardBody>
-                <p className="text-xs text-muted">Total requests</p>
-                <p className="mt-1 text-2xl font-semibold text-white">{data.totalRequests}</p>
-              </CardBody>
-            </Card>
-            <Card>
-              <CardBody>
-                <p className="text-xs text-muted">Wallet status</p>
-                <p className="mt-1">
-                  <Badge tone={data.wallet.isVerified ? 'success' : 'default'}>
-                    {data.wallet.isVerified ? 'Verified (300 req/min)' : 'Unverified (30 req/min)'}
-                  </Badge>
+                <div className="mb-1 flex items-center gap-1.5 text-xs text-muted">
+                  <DollarSign className="h-3.5 w-3.5" /> Total spend
+                </div>
+                <p className="text-2xl font-semibold text-foreground">
+                  $<AnimatedCounter value={data.totalSpendUsd} decimals={4} />
                 </p>
+              </CardBody>
+            </Card>
+            <Card>
+              <CardBody>
+                <div className="mb-1 flex items-center gap-1.5 text-xs text-muted">
+                  <Activity className="h-3.5 w-3.5" /> Total requests
+                </div>
+                <p className="text-2xl font-semibold text-foreground">
+                  <AnimatedCounter value={data.totalRequests} />
+                </p>
+              </CardBody>
+            </Card>
+            <Card>
+              <CardBody>
+                <div className="mb-1 flex items-center gap-1.5 text-xs text-muted">
+                  <ShieldCheck className="h-3.5 w-3.5" /> Wallet status
+                </div>
+                <Badge tone={data.wallet.isVerified ? 'success' : 'default'} dot>
+                  {data.wallet.isVerified ? 'Verified (300 req/min)' : 'Unverified (30 req/min)'}
+                </Badge>
               </CardBody>
             </Card>
           </div>
 
           <Card>
-            <CardHeader>
+            <CardHeader className="flex items-center gap-2">
+              <ClipboardList className="h-4 w-4 text-primary" />
               <CardTitle>Recent requests</CardTitle>
             </CardHeader>
-            <CardBody className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead className="text-xs uppercase text-muted">
-                  <tr>
-                    <th className="pb-2 pr-4">Route</th>
-                    <th className="pb-2 pr-4">Status</th>
-                    <th className="pb-2 pr-4">Cache</th>
-                    <th className="pb-2 pr-4">Provider</th>
-                    <th className="pb-2 pr-4">Latency</th>
-                    <th className="pb-2">When</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {data.recentRequests.map((row) => (
-                    <tr key={row.id}>
-                      <td className="py-2 pr-4 font-mono text-xs">{row.route}</td>
-                      <td className="py-2 pr-4">
-                        <Badge tone={row.statusCode < 400 ? 'success' : 'danger'}>{row.statusCode}</Badge>
-                      </td>
-                      <td className="py-2 pr-4">{row.cacheHit ? 'hit' : 'miss'}</td>
-                      <td className="py-2 pr-4 text-xs text-muted">{row.providerUsed ?? '—'}</td>
-                      <td className="py-2 pr-4 text-xs text-muted">{row.latencyMs}ms</td>
-                      <td className="py-2 text-xs text-muted">{new Date(row.createdAt).toLocaleString()}</td>
-                    </tr>
-                  ))}
-                  {data.recentRequests.length === 0 && (
-                    <tr>
-                      <td colSpan={6} className="py-4 text-center text-muted">
+            <CardBody>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableHeaderCell>Route</TableHeaderCell>
+                    <TableHeaderCell>Status</TableHeaderCell>
+                    <TableHeaderCell>Cache</TableHeaderCell>
+                    <TableHeaderCell>Provider</TableHeaderCell>
+                    <TableHeaderCell>Latency</TableHeaderCell>
+                    <TableHeaderCell>When</TableHeaderCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {loading && Array.from({ length: 4 }).map((_, i) => <SkeletonRow key={i} cols={6} />)}
+                  {!loading &&
+                    data.recentRequests.map((row) => (
+                      <TableRow key={row.id}>
+                        <TableCell className="font-mono text-xs">{row.route}</TableCell>
+                        <TableCell>
+                          <Badge tone={row.statusCode < 400 ? 'success' : 'danger'}>{row.statusCode}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge tone={row.cacheHit ? 'info' : 'default'}>{row.cacheHit ? 'hit' : 'miss'}</Badge>
+                        </TableCell>
+                        <TableCell className="text-xs text-muted">{row.providerUsed ?? '—'}</TableCell>
+                        <TableCell className="text-xs text-muted">{row.latencyMs}ms</TableCell>
+                        <TableCell className="text-xs text-muted">{new Date(row.createdAt).toLocaleString()}</TableCell>
+                      </TableRow>
+                    ))}
+                  {!loading && data.recentRequests.length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={6} className="py-8 text-center text-muted">
                         No requests yet.
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   )}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </CardBody>
           </Card>
-        </div>
+        </motion.div>
       )}
     </div>
   );
