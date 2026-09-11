@@ -19,6 +19,8 @@ declare module 'fastify' {
       requirement: PaymentRequirement;
       transactionId?: string;
       walletId?: string;
+      /** Set only when this call was against a published third-party listing. */
+      listingId?: string;
     };
     resultMeta?: {
       cacheHit: boolean;

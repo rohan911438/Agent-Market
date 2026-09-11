@@ -13,6 +13,8 @@ export interface CreateApiRequestInput {
   statusCode: number;
   latencyMs: number;
   errorCode?: string;
+  /** Set only when this request called a published third-party listing. */
+  listingId?: string;
 }
 
 export class ApiRequestRepository {

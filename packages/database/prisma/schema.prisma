@@ -64,6 +64,11 @@ model Payment {
   user             User?     @relation(fields: [userId], references: [id])
   cachedResponseId String?
   cachedResponse   CachedResponse? @relation(fields: [cachedResponseId], references: [id])
+  /// Set only when this payment settled a call against a published
+  /// third-party listing (see ApiListing) — null for first-party traffic,
+  /// which isn't "provider revenue," it's AgentMarket's own.
+  listingId        String?
+  listing          ApiListing? @relation(fields: [listingId], references: [id])
   createdAt        DateTime  @default(now())
   settledAt        DateTime?
 
@@ -71,6 +76,7 @@ model Payment {
 
   @@index([walletId])
   @@index([status])
+  @@index([listingId])
 }
 
 /// One observability record per HTTP request to a metered route.
@@ -91,11 +97,16 @@ model ApiRequest {
   statusCode   Int
   latencyMs    Int
   errorCode    String?
+  /// Mirrors Payment.listingId — set only for calls against a published
+  /// third-party listing. Null for first-party traffic.
+  listingId    String?
+  listing      ApiListing? @relation(fields: [listingId], references: [id])
   createdAt    DateTime @default(now())
 
   @@index([route])
   @@index([walletId])
   @@index([createdAt])
+  @@index([listingId])
 }
 
 /// Response cache persisted alongside the in-memory cache so that a
@@ -207,6 +218,7 @@ model ProviderAccount {
   updatedAt     DateTime  @updatedAt
 
   listings ApiListing[]
+  payouts  Payout[]
 
   @@index([status])
 }
@@ -239,6 +251,28 @@ model ApiListing {
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
   publishedAt        DateTime?
+
+  payments    Payment[]
+  apiRequests ApiRequest[]
+
+  @@index([providerAccountId])
+  @@index([status])
+}
+
+/// A ledger record of a provider's earned share of settled payments for a
+/// period — this is bookkeeping only, not a mechanism that moves real money.
+/// See Phase 07: disbursing to `ApiListing.payoutWalletAddress` is explicitly
+/// out of scope until separately approved.
+model Payout {
+  id                String    @id @default(cuid())
+  providerAccountId String
+  providerAccount   ProviderAccount @relation(fields: [providerAccountId], references: [id])
+  amountUsd         Float
+  status            String    @default("pending") // pending | paid
+  periodStart       DateTime
+  periodEnd         DateTime
+  settledAt         DateTime?
+  createdAt         DateTime  @default(now())
 
   @@index([providerAccountId])
   @@index([status])

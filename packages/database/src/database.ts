@@ -6,6 +6,7 @@ import { AuditLogRepository } from './repositories/audit-log.repository.js';
 import { CachedResponseRepository } from './repositories/cached-response.repository.js';
 import { MarketplaceApiRepository } from './repositories/marketplace-api.repository.js';
 import { PaymentRepository } from './repositories/payment.repository.js';
+import { PayoutRepository } from './repositories/payout.repository.js';
 import { ProviderAccountRepository } from './repositories/provider-account.repository.js';
 import { ProviderRepository } from './repositories/provider.repository.js';
 import { RateLimitRepository } from './repositories/rate-limit.repository.js';
@@ -31,6 +32,7 @@ export class Database {
   readonly marketplaceApis: MarketplaceApiRepository;
   readonly providerAccounts: ProviderAccountRepository;
   readonly apiListings: ApiListingRepository;
+  readonly payouts: PayoutRepository;
 
   constructor(readonly prisma: PrismaClient = getPrismaClient()) {
     this.users = new UserRepository(prisma);
@@ -45,6 +47,7 @@ export class Database {
     this.marketplaceApis = new MarketplaceApiRepository(prisma);
     this.providerAccounts = new ProviderAccountRepository(prisma);
     this.apiListings = new ApiListingRepository(prisma);
+    this.payouts = new PayoutRepository(prisma);
   }
 
   disconnect(): Promise<void> {

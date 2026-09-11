@@ -112,3 +112,8 @@ erDiagram
   audit trail.
 - Every repository (`packages/database/src/repositories/*.ts`) is the *only* place that
   touches Prisma for its table — no raw `prisma.*` calls elsewhere in the codebase.
+- **This diagram predates Phase 2's control plane and Phase 7's revenue ledger** —
+  `ProviderAccount`, `ApiListing`, and `Payout` aren't pictured above, and `Payment`/
+  `ApiRequest` also carry a nullable `listingId` (set only when the call was against a
+  published third-party listing; null for first-party traffic). See
+  `packages/database/prisma/schema.prisma` for the current, authoritative shape.

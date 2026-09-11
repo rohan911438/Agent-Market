@@ -9,6 +9,7 @@ import { registerMcpRoutes } from './catalog/mcp.route.js';
 import { registerSwaggerUiAssets } from './catalog/swagger-ui.js';
 import { registerListingRoutes } from './control-plane/listings.route.js';
 import { registerProviderAccountRoutes } from './control-plane/provider-account.route.js';
+import { registerProviderRevenueRoutes } from './control-plane/revenue.route.js';
 import { registerDashboardRoute } from './dashboard.route.js';
 import { registerExecutionReadinessRoute } from './execution-readiness.route.js';
 import { registerHealthRoute } from './health.route.js';
@@ -29,6 +30,9 @@ export function registerRoutes(server: FastifyInstance, ctx: AppContext): void {
   // Control plane — provider onboarding & self-service publishing (Phase 2)
   registerProviderAccountRoutes(server, ctx);
   registerListingRoutes(server, ctx);
+
+  // Revenue ledger — provider-facing take-rate reporting (Phase 7)
+  registerProviderRevenueRoutes(server, ctx);
 
   // Protocol-native catalog — OpenAPI/Swagger/Postman/MCP (Phase 4)
   registerSwaggerUiAssets(server);

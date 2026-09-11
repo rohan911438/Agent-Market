@@ -7,6 +7,7 @@ import type {
   ProviderAccountView,
   RegisterProviderRequest,
   RegisterProviderResponse,
+  RevenueSummaryView,
 } from '@agentmarket/shared-types';
 import { callApi } from './api-client';
 
@@ -58,6 +59,10 @@ export function configureListingPayment(apiKey: string, id: string, input: Confi
 
 export function publishListing(apiKey: string, id: string) {
   return callApi<ApiListingView>(`/v1/listings/${id}/publish`, { method: 'POST', authorization: apiKey });
+}
+
+export function getProviderRevenue(apiKey: string) {
+  return callApi<RevenueSummaryView>('/v1/providers/me/revenue', { authorization: apiKey });
 }
 
 export function errorMessage(body: unknown, fallback = 'Something went wrong.'): string {

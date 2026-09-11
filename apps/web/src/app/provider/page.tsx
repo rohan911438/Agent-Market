@@ -2,16 +2,25 @@
 
 import { ApiKeyReveal } from '@/components/provider/api-key-reveal';
 import { Badge } from '@/components/ui/badge';
+import { AnimatedCounter } from '@/components/ui/animated-counter';
 import { Button } from '@/components/ui/button';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from '@/components/ui/table';
-import { errorMessage, getProviderMe, listListings, registerProvider, rotateProviderApiKey, verifyProvider } from '@/lib/provider-api';
+import {
+  errorMessage,
+  getProviderMe,
+  getProviderRevenue,
+  listListings,
+  registerProvider,
+  rotateProviderApiKey,
+  verifyProvider,
+} from '@/lib/provider-api';
 import { useProviderSession } from '@/lib/provider-context';
 import { listingStatusBadge, providerStatusBadge } from '@/lib/provider-status';
-import type { ApiListingView, ProviderAccountView } from '@agentmarket/shared-types';
+import type { ApiListingView, ProviderAccountView, RevenueSummaryView } from '@agentmarket/shared-types';
 import { AnimatePresence, motion } from 'framer-motion';
-import { KeyRound, LogOut, Plus, RefreshCw, ShieldCheck, Store } from 'lucide-react';
+import { DollarSign, KeyRound, LogOut, Plus, RefreshCw, ShieldCheck, Store } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
@@ -186,6 +195,118 @@ function RotateKeyControl({ apiKey, onRotated }: { apiKey: string; onRotated: (n
   );
 }
 
+function RevenueSection({ apiKey }: { apiKey: string }) {
+  const [revenue, setRevenue] = useState<RevenueSummaryView | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void getProviderRevenue(apiKey).then((res) => {
+      if (!cancelled && res.status === 200) setRevenue(res.body);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [apiKey]);
+
+  return (
+    <Card>
+      <CardHeader className="flex items-center gap-2">
+        <DollarSign className="h-4 w-4 text-primary" />
+        <CardTitle>Revenue</CardTitle>
+      </CardHeader>
+      <CardBody>
+        {!revenue ? (
+          <div className="h-24 animate-pulse rounded-xl bg-surface-hover" />
+        ) : (
+          <div className="space-y-5">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div className="rounded-xl border border-border bg-surface-hover px-4 py-3">
+                <div className="text-xs font-medium uppercase tracking-wide text-muted-2">Total earned</div>
+                <div className="mt-1 font-display text-2xl font-bold tracking-tight text-foreground">
+                  <AnimatedCounter value={revenue.totalEarnedUsd} decimals={2} prefix="$" />
+                </div>
+              </div>
+              <div className="rounded-xl border border-border bg-surface-hover px-4 py-3">
+                <div className="text-xs font-medium uppercase tracking-wide text-muted-2">This month</div>
+                <div className="mt-1 font-display text-2xl font-bold tracking-tight text-foreground">
+                  <AnimatedCounter value={revenue.thisMonthUsd} decimals={2} prefix="$" />
+                </div>
+              </div>
+            </div>
+
+            {revenue.listings.length === 0 ? (
+              <div className="py-6 text-center">
+                <p className="font-medium text-foreground">No revenue yet</p>
+                <p className="mx-auto mt-1 max-w-md text-sm text-muted">
+                  Third-party listings aren&apos;t proxied through a live gateway yet, so no real payment has
+                  settled against one. These numbers are accurate — not placeholders — and will update the moment
+                  traffic starts flowing.
+                </p>
+              </div>
+            ) : (
+              <div>
+                <h4 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-2">By listing</h4>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableHeaderCell>Listing</TableHeaderCell>
+                      <TableHeaderCell>Payments</TableHeaderCell>
+                      <TableHeaderCell>Earned</TableHeaderCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {revenue.listings.map((listing) => (
+                      <TableRow key={listing.listingId}>
+                        <TableCell>
+                          <div className="font-medium text-foreground">{listing.name}</div>
+                          <div className="font-mono text-xs text-muted-2">{listing.slug}</div>
+                        </TableCell>
+                        <TableCell className="text-muted">{listing.paymentCount}</TableCell>
+                        <TableCell className="text-foreground">${listing.totalUsd.toFixed(2)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+
+            {revenue.recentPayouts.length > 0 && (
+              <div>
+                <h4 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-2">Recent payouts</h4>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableHeaderCell>Period</TableHeaderCell>
+                      <TableHeaderCell>Amount</TableHeaderCell>
+                      <TableHeaderCell>Status</TableHeaderCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {revenue.recentPayouts.map((payout) => (
+                      <TableRow key={payout.id}>
+                        <TableCell className="text-muted">
+                          {new Date(payout.periodStart).toLocaleDateString()} –{' '}
+                          {new Date(payout.periodEnd).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell className="text-foreground">${payout.amountUsd.toFixed(2)}</TableCell>
+                        <TableCell>
+                          <Badge tone={payout.status === 'paid' ? 'success' : 'warning'} dot>
+                            {payout.status === 'paid' ? 'Paid' : 'Pending'}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </div>
+        )}
+      </CardBody>
+    </Card>
+  );
+}
+
 function ProviderDashboard({ apiKey }: { apiKey: string }) {
   const { clearSession, setSession } = useProviderSession();
   const [account, setAccount] = useState<ProviderAccountView | null>(null);
@@ -321,6 +442,8 @@ function ProviderDashboard({ apiKey }: { apiKey: string }) {
           )}
         </CardBody>
       </Card>
+
+      <RevenueSection apiKey={apiKey} />
     </div>
   );
 }
