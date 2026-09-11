@@ -14,8 +14,51 @@ function toToolName(namespace: string, operationId: string): string {
   return `${namespace}__${operationId}`.toLowerCase().replace(/[^a-z0-9_-]/g, '_');
 }
 
+/**
+ * Every catalog tool's input schema carries this reserved, namespaced block
+ * alongside the operation's real parameters — namespaced under a single
+ * `_agentmarket` object (not flat reserved keys) so it can never collide
+ * with a real parameter name a first- or third-party operation happens to
+ * declare (e.g. a listing with its own "payment" field). This is the
+ * machine-readable surface an MCP client uses to complete the x402 dance
+ * and declare a budget — see services/mcp-tool-executor.ts and
+ * services/mcp-session-budget.ts, which read exactly these fields back out.
+ */
+const AGENTMARKET_CONTROL_SCHEMA = {
+  type: 'object',
+  description:
+    'Reserved AgentMarket control fields. Not part of the underlying API — read by the MCP tool executor, ' +
+    'never forwarded to the endpoint itself.',
+  properties: {
+    payment: {
+      type: 'string',
+      description:
+        'Base64 X-PAYMENT payload from a prior 402 response to this same tool, once signed. Omit on the first ' +
+        'call to a paid tool — the result will report PAYMENT_REQUIRED with everything needed to construct this.',
+    },
+    sessionId: {
+      type: 'string',
+      description:
+        'A client-chosen id reused across calls to scope maxSessionSpendUsd/maxDailySpendUsd tracking to one ' +
+        'agent session. Omit for stateless, per-call-only budget enforcement.',
+    },
+    maxCostUsd: {
+      type: 'number',
+      description: "Reject this call with BUDGET_EXCEEDED before paying if the tool's price exceeds this.",
+    },
+    maxSessionSpendUsd: {
+      type: 'number',
+      description: 'Sets/updates the sessionId\'s cumulative spend cap for this MCP connection. Requires sessionId.',
+    },
+    maxDailySpendUsd: {
+      type: 'number',
+      description: "Sets/updates the sessionId's cumulative spend cap for the current UTC day. Requires sessionId.",
+    },
+  },
+} as const;
+
 function operationToInputSchema(operation: OpenApiOperation): CatalogTool['inputSchema'] {
-  const properties: Record<string, unknown> = {};
+  const properties: Record<string, unknown> = { _agentmarket: AGENTMARKET_CONTROL_SCHEMA };
   const required: string[] = [];
 
   for (const param of operation.parameters) {
@@ -54,6 +97,7 @@ export async function buildCatalogTools(ctx: AppContext): Promise<CatalogTool[]>
         resource: endpoint?.resource ?? operation.path,
         method: operation.method.toUpperCase() as McpToolMetadata['method'],
         isThirdParty: false,
+        operationId: operation.operationId,
       },
     });
   }
@@ -81,10 +125,40 @@ export async function buildCatalogTools(ctx: AppContext): Promise<CatalogTool[]>
           method: operation.method.toUpperCase() as McpToolMetadata['method'],
           isThirdParty: true,
           slug: listing.slug,
+          operationId: operation.operationId,
         },
       });
     }
   }
 
   return tools;
+}
+
+/**
+ * The one built-in tool that isn't derived from a listing's OpenAPI
+ * operation — Phase 9's ranked discovery (services/discovery-ranking.ts, via
+ * routes/discover.route.ts's exported `runDiscovery`), exposed as an MCP
+ * tool so an agent can search by capability ("low-latency crypto sentiment")
+ * without first fetching the whole catalog. Free — no `_agentmarket`
+ * payment/budget fields apply, so its schema omits them rather than
+ * advertising controls that do nothing.
+ */
+export function buildDiscoverCapabilitiesTool(): CatalogTool {
+  return {
+    name: 'discover_capabilities',
+    description:
+      'Ranks every marketplace capability (first- and third-party) against a free-text description of what you ' +
+      'need, optionally constrained by cost/latency. Use this instead of tools/list when you know the job but not ' +
+      'which listing does it.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'What you need, e.g. "low-latency BTC risk assessment".' },
+        maxCostPerCall: { type: 'number', description: 'Hard ceiling — listings priced above this are excluded entirely.' },
+        maxLatencyMs: { type: 'number', description: 'Soft preference — listings slower than this (p95) are down-ranked, not excluded.' },
+      },
+      required: ['query'],
+    },
+    agentmarket: { priceUsd: null, resource: '/v1/discover', method: 'POST', isThirdParty: false },
+  };
 }

@@ -17,6 +17,7 @@ import { registerDashboardRoute } from './dashboard.route.js';
 import { registerDiscoverRoute } from './discover.route.js';
 import { registerExecutionReadinessRoute } from './execution-readiness.route.js';
 import { registerHealthRoute } from './health.route.js';
+import { registerListingInvokeRoute } from './listing-invoke.route.js';
 import { registerMarketSummaryRoute } from './market-summary.route.js';
 import { registerMarketplaceRoute } from './marketplace.route.js';
 import { registerPortfolioHealthRoute } from './portfolio-health.route.js';
@@ -68,6 +69,7 @@ export function registerRoutes(server: FastifyInstance, ctx: AppContext): void {
   registerTrendingAssetsRoute(server, ctx);
   registerPortfolioHealthRoute(server, ctx);
   registerExecutionReadinessRoute(server, ctx);
+  registerListingInvokeRoute(server, ctx); // Third-party listing gateway — priced per listing (MCP Agent-Native Interface)
 
   // Orchestration Engine — multi-step pipelines over the endpoints above (Phase 12)
   registerWorkflowRoutes(server, ctx);

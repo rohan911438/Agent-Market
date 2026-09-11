@@ -37,5 +37,13 @@ declare module 'fastify' {
      */
     workflowSteps?: WorkflowStepInput[];
     workflowStepPricesUsd?: number[];
+    /**
+     * Set by register-metered-route.ts's dynamic `resolveMeta` path (used by
+     * routes whose resource/price isn't known until a path param is read —
+     * e.g. POST /v1/listings/:slug/invoke, priced per-listing) so onSend/
+     * onResponse log the resource/price actually charged, not the route's
+     * static placeholder.
+     */
+    resolvedMeteredMeta?: { resource: string; priceUsd: number; listingId?: string };
   }
 }

@@ -1,3 +1,4 @@
+import { encodePaymentPayload } from '@agentmarket/payments';
 import { McpManifestSchema } from '@rohankumar4179/shared-types';
 import { ListToolsResultSchema } from '@modelcontextprotocol/sdk/types.js';
 import type { FastifyInstance } from 'fastify';
@@ -6,6 +7,16 @@ import { buildServer } from '../src/server.js';
 import { buildTestContext } from './helpers/build-test-context.js';
 
 const WALLET = 'C'.repeat(58);
+
+/** A fresh, validly-signed (mock scheme) X-PAYMENT header — see test/workflows.integration.test.ts for the same helper. */
+function payHeader(nonce: string): string {
+  return encodePaymentPayload({
+    x402Version: 1,
+    scheme: 'exact',
+    network: 'mock',
+    payload: { nonce, address: `WALLET-${nonce}` },
+  });
+}
 
 const VALID_SPEC = JSON.stringify({
   openapi: '3.0.3',
@@ -216,8 +227,13 @@ describe('protocol-native catalog (Phase 4)', () => {
         method: 'GET',
         isThirdParty: true,
         slug,
+        operationId: 'getWalletRisk',
       });
-      expect(tool?.inputSchema).toEqual({ type: 'object', properties: { address: { type: 'string' } }, required: ['address'] });
+      // `_agentmarket` is the reserved control block every tool carries — see mcp-catalog.ts.
+      expect(Object.keys((tool?.inputSchema as { properties: object }).properties)).toEqual(
+        expect.arrayContaining(['address', '_agentmarket']),
+      );
+      expect(tool?.inputSchema.required).toEqual(['address']);
     });
   });
 
@@ -316,7 +332,9 @@ describe('protocol-native catalog (Phase 4)', () => {
       const res = await server.inject({ method: 'GET', url: '/.well-known/mcp.json' });
       expect(res.statusCode).toBe(200);
       const manifest = McpManifestSchema.parse(res.json());
-      const firstPartyTools = manifest.tools.filter((t) => !t.agentmarket.isThirdParty);
+      // Excludes discover_capabilities — a built-in MCP tool with no OpenAPI
+      // operation behind it (see mcp-catalog.ts) — from the 8 real endpoints.
+      const firstPartyTools = manifest.tools.filter((t) => !t.agentmarket.isThirdParty && t.name !== 'discover_capabilities');
       expect(firstPartyTools.length).toBe(8);
       expect(firstPartyTools.map((t) => t.agentmarket.resource)).toEqual(
         expect.arrayContaining(['/v1/analyze', '/v1/portfolio-health']),
@@ -356,16 +374,130 @@ describe('protocol-native catalog (Phase 4)', () => {
       expect(message.error).toMatchObject({ code: -32601 });
     });
 
-    it('tells the caller how to invoke a real tool directly instead of proxying it', async () => {
+    it('reports PAYMENT_REQUIRED, machine-readably, for a paid tool called with no payment', async () => {
       const { message } = await mcpRequest(server, {
         jsonrpc: '2.0',
         id: 4,
         method: 'tools/call',
         params: { name: 'agentmarket__get_v1_analyze', arguments: { symbol: 'BTC' } },
       });
-      const result = message.result as { isError: boolean; content: { type: string; text: string }[] };
+      const result = message.result as { isError: boolean; structuredContent: { code: string; paymentRequired: { accepts: unknown[] } } };
       expect(result.isError).toBe(true);
-      expect(result.content[0]?.text).toContain('GET /v1/analyze');
+      expect(result.structuredContent.code).toBe('PAYMENT_REQUIRED');
+      expect(result.structuredContent.paymentRequired.accepts).toHaveLength(1);
+    });
+
+    it('actually executes a paid first-party tool once a real payment is attached — the x402 gate is not bypassed', async () => {
+      const paid = await mcpRequest(server, {
+        jsonrpc: '2.0',
+        id: 5,
+        method: 'tools/call',
+        params: {
+          name: 'agentmarket__get_v1_analyze',
+          arguments: { symbol: 'BTC', _agentmarket: { payment: payHeader('mcp-analyze-1') } },
+        },
+      });
+      const result = paid.message.result as { isError: boolean; structuredContent: { symbol: string } };
+      expect(result.isError).toBe(false);
+      expect(result.structuredContent.symbol).toBe('BTC');
+
+      // Reusing the exact same payment reference again must never re-settle
+      // or re-execute — same replay guarantee a direct HTTP caller gets.
+      const replay = await mcpRequest(server, {
+        jsonrpc: '2.0',
+        id: 6,
+        method: 'tools/call',
+        params: {
+          name: 'agentmarket__get_v1_analyze',
+          arguments: { symbol: 'BTC', _agentmarket: { payment: payHeader('mcp-analyze-1') } },
+        },
+      });
+      expect((replay.message.result as { isError: boolean }).isError).toBe(false);
+    });
+
+    it('rejects a call that would exceed a declared per-call budget before ever attempting payment', async () => {
+      const { message } = await mcpRequest(server, {
+        jsonrpc: '2.0',
+        id: 7,
+        method: 'tools/call',
+        params: {
+          name: 'agentmarket__get_v1_analyze',
+          arguments: { symbol: 'BTC', _agentmarket: { maxCostUsd: 0.001 } },
+        },
+      });
+      const result = message.result as { isError: boolean; structuredContent: { code: string } };
+      expect(result.isError).toBe(true);
+      expect(result.structuredContent.code).toBe('BUDGET_EXCEEDED');
+    });
+
+    it('accumulates spend against a declared session cap across calls and rejects once crossed', async () => {
+      const sessionId = 'mcp-test-session-1';
+      // /v1/analyze is $0.05 (see analyze.route.ts) — a $0.06 session cap allows exactly one call.
+      const first = await mcpRequest(server, {
+        jsonrpc: '2.0',
+        id: 8,
+        method: 'tools/call',
+        params: {
+          name: 'agentmarket__get_v1_analyze',
+          arguments: { symbol: 'ETH', _agentmarket: { sessionId, maxSessionSpendUsd: 0.06, payment: payHeader('mcp-session-1') } },
+        },
+      });
+      expect((first.message.result as { isError: boolean }).isError).toBe(false);
+
+      const second = await mcpRequest(server, {
+        jsonrpc: '2.0',
+        id: 9,
+        method: 'tools/call',
+        params: {
+          name: 'agentmarket__get_v1_analyze',
+          arguments: { symbol: 'ETH', _agentmarket: { sessionId, payment: payHeader('mcp-session-2') } },
+        },
+      });
+      const result = second.message.result as { isError: boolean; structuredContent: { code: string } };
+      expect(result.isError).toBe(true);
+      expect(result.structuredContent.code).toBe('BUDGET_EXCEEDED');
+    });
+
+    it('exposes discover_capabilities as a free, immediately-callable tool', async () => {
+      const { message } = await mcpRequest(server, {
+        jsonrpc: '2.0',
+        id: 10,
+        method: 'tools/call',
+        params: { name: 'discover_capabilities', arguments: { query: 'crypto market sentiment' } },
+      });
+      const result = message.result as { isError: boolean; structuredContent: { results: unknown[] } };
+      expect(result.isError).toBe(false);
+      expect(result.structuredContent.results.length).toBeGreaterThan(0);
+    });
+
+    it('lists and reads marketplace:// resources generated from live catalog data', async () => {
+      const list = await mcpRequest(server, { jsonrpc: '2.0', id: 11, method: 'resources/list', params: {} });
+      const resources = (list.message.result as { resources: { uri: string }[] }).resources;
+      expect(resources.map((r) => r.uri)).toEqual(expect.arrayContaining(['marketplace://catalog', 'marketplace://pricing']));
+
+      const read = await mcpRequest(server, {
+        jsonrpc: '2.0',
+        id: 12,
+        method: 'resources/read',
+        params: { uri: 'marketplace://pricing' },
+      });
+      const contents = (read.message.result as { contents: { uri: string; text: string }[] }).contents;
+      const pricing = JSON.parse(contents[0]!.text) as { priceUsd: number | null }[];
+      expect(pricing.length).toBeGreaterThan(0);
+    });
+
+    it('lists and renders analyze_market prompt template', async () => {
+      const list = await mcpRequest(server, { jsonrpc: '2.0', id: 13, method: 'prompts/list', params: {} });
+      expect((list.message.result as { prompts: { name: string }[] }).prompts.map((p) => p.name)).toContain('analyze_market');
+
+      const get = await mcpRequest(server, {
+        jsonrpc: '2.0',
+        id: 14,
+        method: 'prompts/get',
+        params: { name: 'analyze_market', arguments: { symbol: 'BTC' } },
+      });
+      const messages = (get.message.result as { messages: { content: { text: string } }[] }).messages;
+      expect(messages[0]?.content.text).toContain('BTC');
     });
   });
 });

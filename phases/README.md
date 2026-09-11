@@ -25,8 +25,9 @@ Work through them roughly in order — later phases assume earlier ones exist (e
 | 11 | AI Discovery | ✅ Done | `apps/api/src/routes/discover.route.ts`, `services/discovery-ranking.ts` |
 | 12 | Orchestration Engine | ✅ Done | `apps/api/src/routes/workflows.route.ts`, `services/workflow-executor.ts` |
 | 13 | Observability | ✅ Done | `apps/api/src/observability/`, `services/availability.ts`, `apps/web/src/app/status/` |
+| 14 | MCP Agent-Native Interface | ✅ Done | `apps/api/src/routes/catalog/mcp.route.ts`, `services/mcp-tool-executor.ts`, `services/listing-invocation.ts`, `routes/listing-invoke.route.ts` |
 
-All 13 phases are done. The per-phase files are kept in this folder as a record of what shipped and why, not as prompts to re-run.
+All 14 phases are done. The per-phase files are kept in this folder as a record of what shipped and why, not as prompts to re-run.
 
 ## Ground rules that apply to every phase (don't repeat per-file)
 

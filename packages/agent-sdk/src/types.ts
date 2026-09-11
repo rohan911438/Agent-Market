@@ -1,5 +1,7 @@
-import type { PaymentPayload, PaymentRequirement } from '@rohankumar4179/shared-types';
+import type { BudgetConfig, PaymentPayload, PaymentRequirement } from '@rohankumar4179/shared-types';
 import type { Budget } from './budget.js';
+
+export type { BudgetConfig };
 
 /** USDC (and this SDK's mock currency) both use 6 decimal places — see AlgorandX402Provider/MockPaymentProvider on the server. */
 export const ATOMIC_UNITS_PER_USD = 1_000_000;
@@ -15,15 +17,6 @@ export interface PaymentScheme {
   supports(network: string): boolean;
   /** `x402Version` is the server's declared protocol version from the 402 response — echo it back in the payload rather than assuming a fixed value. */
   createPayload(requirement: PaymentRequirement, x402Version: number): Promise<PaymentPayload>;
-}
-
-export interface BudgetConfig {
-  /** Reject any single call priced above this. */
-  perCallUsd?: number;
-  /** Reject a call that would push cumulative session spend above this. */
-  sessionUsd?: number;
-  /** Reject a call that would push cumulative spend *today* (UTC) above this. */
-  dailyUsd?: number;
 }
 
 export interface RetryConfig {
