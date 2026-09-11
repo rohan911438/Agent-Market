@@ -38,6 +38,8 @@ function toView(listing: ApiListing, trust: ProviderTrustSummary): ApiListingVie
       : null,
     providerTrustScore: trust.trustScore,
     providerVerificationTier: trust.verificationTier,
+    avgRating: listing.avgRating,
+    reviewCount: listing.reviewCount,
   };
 }
 

@@ -4,6 +4,7 @@ export * from './repositories/api-listing.repository.js';
 export * from './repositories/api-request.repository.js';
 export * from './repositories/audit-log.repository.js';
 export * from './repositories/cached-response.repository.js';
+export * from './repositories/collection.repository.js';
 export * from './repositories/marketplace-api.repository.js';
 export * from './repositories/payment.repository.js';
 export * from './repositories/payout.repository.js';

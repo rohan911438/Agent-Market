@@ -107,6 +107,9 @@ export const ApiListingViewSchema = z.object({
   /** The owning provider account's trust signal — see services/trust-score.ts. Same value across every listing of this provider. */
   providerTrustScore: z.number().int().min(0).max(100),
   providerVerificationTier: VerificationTierSchema,
+  /** Schema placeholder only (Phase 10) — no review submission flow exists yet. Null means "no rating data", not a fabricated 0-star average. */
+  avgRating: z.number().min(0).max(5).nullable(),
+  reviewCount: z.number().int().nonnegative(),
 });
 export type ApiListingView = z.infer<typeof ApiListingViewSchema>;
 
