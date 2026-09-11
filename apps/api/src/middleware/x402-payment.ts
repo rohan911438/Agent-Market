@@ -52,10 +52,15 @@ async function fetchAlgoUsdPrice(ctx: AppContext): Promise<number | undefined> {
  *   2. Header present       -> decode + verify via the active PaymentProvider.
  *   3. Already-seen paymentRef with a stored response -> replay it verbatim,
  *      no re-settlement, no re-execution (replay-attack / duplicate-payment safe).
- *   4. New, valid payment   -> enforce the daily per-wallet spend cap, then
- *      atomically claim the paymentRef (DB unique constraint) before
+ *   4. New, valid payment   -> atomically reserve the daily per-wallet spend
+ *      cap (a single conditional UPDATE, not read-then-compare, so two
+ *      concurrent payments for the same wallet can't both pass a stale
+ *      check and jointly exceed the cap — see WalletRepository.reserveDailySpend),
+ *      then atomically claim the paymentRef (DB unique constraint) before
  *      settling, so two concurrent requests for the same payment can never
- *      both settle.
+ *      both settle. The reservation is released if the claim or settlement
+ *      then fails, so a failed/duplicate payment never permanently eats into
+ *      the cap.
  *   5. On success, the wallet is marked verified (promotes its rate-limit
  *      tier) and `request.paymentContext` is populated for downstream use.
  *
@@ -116,20 +121,24 @@ export function createX402PreHandler(
     }
 
     let walletId: string | undefined;
+    let reservedAtomic: bigint | undefined;
     if (payerAddress) {
       const wallet = await ctx.db.wallets.touch(payerAddress, requirement.network);
       walletId = wallet.id;
 
-      const spendTodaySince = new Date();
-      spendTodaySince.setUTCHours(0, 0, 0, 0);
-      const spentAtomic = await ctx.db.payments.sumSettledSpendSince(walletId, spendTodaySince);
-      const spentUsd = spentAtomic / 1_000_000;
-      const thisPaymentUsd = Number(requirement.maxAmountRequired) / 1_000_000;
-      if (spentUsd + thisPaymentUsd > ctx.config.rateLimits.dailySpendCapUsd) {
+      const now = new Date();
+      const startOfTodayUtc = new Date(now);
+      startOfTodayUtc.setUTCHours(0, 0, 0, 0);
+      const amountAtomic = BigInt(requirement.maxAmountRequired);
+      const capAtomic = BigInt(Math.round(ctx.config.rateLimits.dailySpendCapUsd * 1_000_000));
+
+      const reserved = await ctx.db.wallets.reserveDailySpend(walletId, amountAtomic, capAtomic, startOfTodayUtc, now);
+      if (!reserved) {
         throw new AppError('BUDGET_EXCEEDED', 'Daily spend cap exceeded for this wallet.', 402, {
           dailySpendCapUsd: ctx.config.rateLimits.dailySpendCapUsd,
         });
       }
+      reservedAtomic = amountAtomic;
     }
 
     // Atomically claim this paymentRef via the DB's unique constraint before settling,
@@ -146,6 +155,7 @@ export function createX402PreHandler(
         listingId: resolvedMeta.listingId,
       });
     } catch (err) {
+      if (walletId && reservedAtomic !== undefined) await ctx.db.wallets.releaseDailySpend(walletId, reservedAtomic);
       const isUniqueConstraintViolation =
         err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002';
       if (!isUniqueConstraintViolation) throw err;
@@ -158,6 +168,7 @@ export function createX402PreHandler(
 
     const settleResult = await ctx.paymentService.settle(payload, requirement);
     if (!settleResult.success) {
+      if (walletId && reservedAtomic !== undefined) await ctx.db.wallets.releaseDailySpend(walletId, reservedAtomic);
       await ctx.db.payments.markFailed(paymentRef);
       await ctx.db.auditLogs.record({
         actorType: 'wallet',
