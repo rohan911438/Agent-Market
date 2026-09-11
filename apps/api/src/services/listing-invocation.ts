@@ -1,8 +1,22 @@
+import type { ICache } from '@agentmarket/cache';
+import { buildCacheKey } from '@agentmarket/cache';
 import { AppError } from '@rohankumar4179/shared-types';
 import type { ApiListing } from '@prisma/client';
 import { extractOperations, type OpenApiOperation } from './openapi-spec.js';
 
 const INVOKE_TIMEOUT_MS = 15_000;
+
+/**
+ * Third-party responses have no per-listing freshness policy the way
+ * first-party data does (services/../ttl-policy.ts's CACHE_TTL_SECONDS is
+ * curated per known data type — there's no such editorial judgment
+ * available for an arbitrary provider's arbitrary endpoint). 30s is a
+ * conservative default: short enough that no agent notices staleness, long
+ * enough to absorb the common case of several agents asking the same
+ * question in a burst — the same courtesy first-party routes already
+ * extend to CoinGecko/Binance/etc. via ctx.cache.getOrSet.
+ */
+const THIRD_PARTY_CACHE_TTL_SECONDS = 30;
 
 /**
  * Blocks the address ranges a listing's `upstreamUrl` (provider-controlled,
@@ -145,4 +159,59 @@ export async function invokeUpstreamListing(
   } finally {
     clearTimeout(timeout);
   }
+}
+
+/**
+ * Cache-aware wrapper around `invokeUpstreamListing` — only for read
+ * (GET/HEAD) operations, mirroring the exact convention first-party routes
+ * already follow (`sentiment.route.ts`/`analyze.route.ts` cache their GETs
+ * via `ctx.cache.getOrSet`; `portfolio-health.route.ts`, a POST, explicitly
+ * never does). A non-safe operation (POST/PUT/PATCH/DELETE) may have side
+ * effects on the provider's side, so it is never deduplicated here — every
+ * call reaches the real upstream. The x402 payment gate is unaffected
+ * either way: a cache hit still charges the caller the listing's full
+ * price, exactly like a first-party cache hit does — this only saves a
+ * repeat network round trip to a provider we don't operate, not the
+ * provider's own metering of us.
+ *
+ * A non-2xx upstream response is deliberately never cached (`getOrSet`
+ * alone can't express that: it treats a resolved value, error or not, as
+ * cacheable) — a transient provider failure shouldn't be memoized for the
+ * full TTL window when the provider might already be healthy on the very
+ * next call.
+ */
+export async function invokeUpstreamListingCached(
+  cache: ICache,
+  listing: ApiListing,
+  operationId: string,
+  params: Record<string, unknown>,
+  fetchImpl: typeof fetch = fetch,
+): Promise<UpstreamInvocationResult & { cacheHit: boolean }> {
+  const operation = resolveListingOperation(listing, operationId);
+  const isSafeMethod = operation.method === 'get' || operation.method === 'head';
+
+  if (!isSafeMethod) {
+    const result = await invokeUpstreamListing(listing, operationId, params, fetchImpl);
+    return { ...result, cacheHit: false };
+  }
+
+  const cacheKey = buildCacheKey(`listing-invoke:${listing.slug}`, {
+    operationId,
+    // Object.keys(params).sort() as JSON.stringify's replacer gives a
+    // deterministic key order regardless of how the caller built `params`,
+    // without needing a general-purpose deep-sorting serializer — shallow
+    // params (the common case: query/path values) round-trip exactly;
+    // a param that is itself an object keeps whatever key order it already
+    // had, which only affects the cache HIT RATE, never correctness.
+    params: JSON.stringify(params, Object.keys(params).sort()),
+  });
+
+  const cached = await cache.get<UpstreamInvocationResult>(cacheKey);
+  if (cached) return { ...cached, cacheHit: true };
+
+  const result = await invokeUpstreamListing(listing, operationId, params, fetchImpl);
+  if (result.statusCode < 400) {
+    await cache.set(cacheKey, result, THIRD_PARTY_CACHE_TTL_SECONDS);
+  }
+  return { ...result, cacheHit: false };
 }

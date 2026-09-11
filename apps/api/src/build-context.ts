@@ -6,6 +6,7 @@ import { createPaymentProviderRegistry, X402PaymentService } from '@agentmarket/
 import { createProviderRegistry } from '@agentmarket/providers';
 import { Redis } from 'ioredis';
 import type { AppContext } from './context.js';
+import { McpSessionBudgetStore } from './services/mcp-session-budget.js';
 import { RateLimiterService } from './services/rate-limiter.js';
 
 /** Single place that wires every package's factory into a running AppContext — the app's composition root. */
@@ -39,6 +40,7 @@ export function buildContext(overrideConfig?: ApiConfig): AppContext {
 
   const paymentService = new X402PaymentService(activeProvider);
   const rateLimiter = new RateLimiterService(cache);
+  const mcpSessionBudgets = new McpSessionBudgetStore(cache);
 
-  return { config, db, cache, providerRegistry, intelligenceEngine, paymentService, rateLimiter };
+  return { config, db, cache, providerRegistry, intelligenceEngine, paymentService, rateLimiter, mcpSessionBudgets };
 }

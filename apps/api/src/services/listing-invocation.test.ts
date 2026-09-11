@@ -1,3 +1,4 @@
+import { createCache } from '@agentmarket/cache';
 import type { ApiListing } from '@prisma/client';
 import { AppError } from '@rohankumar4179/shared-types';
 import { describe, expect, it, vi } from 'vitest';
@@ -5,6 +6,7 @@ import {
   assertSafeUpstreamUrl,
   buildUpstreamRequest,
   invokeUpstreamListing,
+  invokeUpstreamListingCached,
   resolveListingOperation,
 } from './listing-invocation.js';
 
@@ -134,5 +136,64 @@ describe('invokeUpstreamListing', () => {
   it('maps a network failure to PROVIDER_UNAVAILABLE', async () => {
     const fetchImpl = vi.fn().mockRejectedValue(new Error('ECONNREFUSED'));
     await expect(invokeUpstreamListing(listing(), 'getWalletRisk', { address: 'ABC123' }, fetchImpl)).rejects.toThrow(AppError);
+  });
+});
+
+describe('invokeUpstreamListingCached', () => {
+  it('caches a GET operation — a second identical call never reaches the upstream', async () => {
+    const cache = createCache('memory');
+    const fetchImpl = vi.fn().mockResolvedValue(new Response(JSON.stringify({ score: 42 }), { status: 200 }));
+
+    const first = await invokeUpstreamListingCached(cache, listing(), 'getWalletRisk', { address: 'ABC123' }, fetchImpl);
+    const second = await invokeUpstreamListingCached(cache, listing(), 'getWalletRisk', { address: 'ABC123' }, fetchImpl);
+
+    expect(first).toEqual({ statusCode: 200, body: { score: 42 }, cacheHit: false });
+    expect(second).toEqual({ statusCode: 200, body: { score: 42 }, cacheHit: true });
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it('treats a different params object as a cache miss', async () => {
+    const cache = createCache('memory');
+    const fetchImpl = vi.fn().mockImplementation(async () => new Response(JSON.stringify({ score: 42 }), { status: 200 }));
+
+    await invokeUpstreamListingCached(cache, listing(), 'getWalletRisk', { address: 'ABC123' }, fetchImpl);
+    await invokeUpstreamListingCached(cache, listing(), 'getWalletRisk', { address: 'XYZ789' }, fetchImpl);
+
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
+  it('is insensitive to param key order — the same logical call is still a cache hit', async () => {
+    const cache = createCache('memory');
+    const fetchImpl = vi.fn().mockImplementation(async () => new Response(JSON.stringify({ score: 42 }), { status: 200 }));
+
+    await invokeUpstreamListingCached(cache, listing(), 'getWalletRisk', { address: 'ABC123', verbose: true }, fetchImpl);
+    const second = await invokeUpstreamListingCached(cache, listing(), 'getWalletRisk', { verbose: true, address: 'ABC123' }, fetchImpl);
+
+    expect(second.cacheHit).toBe(true);
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+  });
+
+  it('never caches a non-2xx upstream response — the next call retries for real', async () => {
+    const cache = createCache('memory');
+    const fetchImpl = vi.fn().mockImplementation(async () => new Response(JSON.stringify({ error: 'nope' }), { status: 503 }));
+
+    const first = await invokeUpstreamListingCached(cache, listing(), 'getWalletRisk', { address: 'ABC123' }, fetchImpl);
+    const second = await invokeUpstreamListingCached(cache, listing(), 'getWalletRisk', { address: 'ABC123' }, fetchImpl);
+
+    expect(first.cacheHit).toBe(false);
+    expect(second.cacheHit).toBe(false);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
+  it('never caches a non-safe (POST) operation — every call reaches the upstream', async () => {
+    const cache = createCache('memory');
+    const fetchImpl = vi.fn().mockImplementation(async () => new Response(JSON.stringify({ id: '1' }), { status: 201 }));
+
+    const first = await invokeUpstreamListingCached(cache, listing(), 'createReport', { note: 'hi' }, fetchImpl);
+    const second = await invokeUpstreamListingCached(cache, listing(), 'createReport', { note: 'hi' }, fetchImpl);
+
+    expect(first.cacheHit).toBe(false);
+    expect(second.cacheHit).toBe(false);
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
   });
 });

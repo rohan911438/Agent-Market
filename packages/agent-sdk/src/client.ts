@@ -6,6 +6,7 @@ import { estimateCost } from './cost-estimator.js';
 import { discoverListings } from './discovery.js';
 import { AllProvidersFailedError, HttpError, UnsupportedPaymentSchemeError } from './errors.js';
 import { buildUrl, readError } from './http.js';
+import { publishCapability, type PublishCapabilityInput, type PublishCapabilityResult } from './publish-capability.js';
 import { withRetry } from './retry.js';
 import { ATOMIC_UNITS_PER_USD } from './types.js';
 import { UsageTracker } from './usage-tracker.js';
@@ -160,6 +161,11 @@ export class AgentMarketClient {
   /** Ranked discovery against a free-text task description — see capability-search.ts. */
   findCapability(query: CapabilitySearchQuery): Promise<CapabilitySearchResult[]> {
     return searchCapabilities(this.fetchImpl, this.baseUrl, query);
+  }
+
+  /** Registers a provider account, creates a listing, sets its price and payout wallet, and publishes it — the other half of agentic commerce: this agent as a seller, not just a buyer. See publish-capability.ts. */
+  publishCapability(input: PublishCapabilityInput): Promise<PublishCapabilityResult> {
+    return publishCapability(this.fetchImpl, this.baseUrl, input);
   }
 
   getUsageSummary(): UsageSummary {

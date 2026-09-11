@@ -5,6 +5,7 @@ import { IntelligenceEngine, RuleBasedExplainer } from '@agentmarket/intelligenc
 import { createPaymentProviderRegistry, X402PaymentService } from '@agentmarket/payments';
 import type { AppContext } from '../../src/context.js';
 import { initTracingForTests } from '../../src/observability/tracing.js';
+import { McpSessionBudgetStore } from '../../src/services/mcp-session-budget.js';
 import { RateLimiterService } from '../../src/services/rate-limiter.js';
 import { buildMockProviderRegistry } from './mock-provider-registry.js';
 
@@ -34,6 +35,7 @@ export function buildTestContext(overrides: Partial<ApiConfig> = {}): AppContext
   const { activeProvider } = createPaymentProviderRegistry({ activeProviderId: 'mock' });
   const paymentService = new X402PaymentService(activeProvider);
   const rateLimiter = new RateLimiterService(cache);
+  const mcpSessionBudgets = new McpSessionBudgetStore(cache);
 
-  return { config, db, cache, providerRegistry, intelligenceEngine, paymentService, rateLimiter };
+  return { config, db, cache, providerRegistry, intelligenceEngine, paymentService, rateLimiter, mcpSessionBudgets };
 }
