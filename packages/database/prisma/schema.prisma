@@ -306,3 +306,24 @@ model Payout {
   @@index([providerAccountId])
   @@index([status])
 }
+
+/// A periodic reachability probe (Phase 13's synthetic monitoring) — for
+/// `targetType: "first_party"`, `target` is the fixed literal
+/// "first-party" and the probe is the same dependency check GET /health
+/// runs; for `targetType: "third_party"`, `target` is an `ApiListing.id`
+/// and the probe is a real HTTP request to that listing's `upstreamUrl`.
+/// That third-party result is only as meaningful as the provider's own
+/// infrastructure — there's no gateway routing real traffic there yet — so
+/// treat it as a best-effort reachability signal, not a guarantee.
+model SyntheticCheck {
+  id         String   @id @default(cuid())
+  target     String
+  targetType String   // first_party | third_party
+  success    Boolean
+  latencyMs  Int
+  statusCode Int?
+  error      String?
+  checkedAt  DateTime @default(now())
+
+  @@index([target, checkedAt])
+}

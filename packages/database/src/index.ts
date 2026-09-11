@@ -11,6 +11,7 @@ export * from './repositories/payout.repository.js';
 export * from './repositories/provider-account.repository.js';
 export * from './repositories/provider.repository.js';
 export * from './repositories/rate-limit.repository.js';
+export * from './repositories/synthetic-check.repository.js';
 export * from './repositories/usage.repository.js';
 export * from './repositories/user.repository.js';
 export * from './repositories/wallet.repository.js';

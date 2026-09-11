@@ -129,4 +129,52 @@ export class ApiRequestRepository {
     }
     return byRoute;
   }
+
+  /**
+   * Total vs. "available" (statusCode < 500 — reachable and responded,
+   * regardless of whether the *caller's* input was valid) request counts
+   * per third-party listing over a rolling window — the real-traffic half
+   * of Phase 13's availability score (services/availability.ts blends this
+   * with synthetic-check counts).
+   */
+  async availabilityCountsByListingIds(listingIds: string[], since: Date): Promise<Map<string, { total: number; successful: number }>> {
+    if (listingIds.length === 0) return new Map();
+    const [totalRows, successRows] = await Promise.all([
+      this.prisma.apiRequest.groupBy({
+        by: ['listingId'],
+        where: { listingId: { in: listingIds }, createdAt: { gte: since } },
+        _count: { _all: true },
+      }),
+      this.prisma.apiRequest.groupBy({
+        by: ['listingId'],
+        where: { listingId: { in: listingIds }, createdAt: { gte: since }, statusCode: { lt: 500 } },
+        _count: { _all: true },
+      }),
+    ]);
+    const successById = new Map(successRows.filter((r) => r.listingId).map((r) => [r.listingId as string, r._count._all]));
+    return new Map(
+      totalRows
+        .filter((r) => r.listingId)
+        .map((r) => [r.listingId as string, { total: r._count._all, successful: successById.get(r.listingId as string) ?? 0 }]),
+    );
+  }
+
+  /** Same as `availabilityCountsByListingIds`, but for first-party endpoints identified by `route`. */
+  async availabilityCountsByRoutes(routes: string[], since: Date): Promise<Map<string, { total: number; successful: number }>> {
+    if (routes.length === 0) return new Map();
+    const [totalRows, successRows] = await Promise.all([
+      this.prisma.apiRequest.groupBy({
+        by: ['route'],
+        where: { route: { in: routes }, listingId: null, createdAt: { gte: since } },
+        _count: { _all: true },
+      }),
+      this.prisma.apiRequest.groupBy({
+        by: ['route'],
+        where: { route: { in: routes }, listingId: null, createdAt: { gte: since }, statusCode: { lt: 500 } },
+        _count: { _all: true },
+      }),
+    ]);
+    const successByRoute = new Map(successRows.map((r) => [r.route, r._count._all]));
+    return new Map(totalRows.map((r) => [r.route, { total: r._count._all, successful: successByRoute.get(r.route) ?? 0 }]));
+  }
 }

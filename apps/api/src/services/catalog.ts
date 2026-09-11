@@ -2,6 +2,7 @@ import type { PublishedApiListing } from '@agentmarket/database';
 import type { MarketplaceApi } from '@agentmarket/shared-types';
 import type { MarketplaceApi as MarketplaceApiRow, ProviderAccount } from '@prisma/client';
 import type { AppContext } from '../context.js';
+import { computeCatalogAvailability } from './availability.js';
 import { formatPriceLabel, isRecentlyPublished } from './marketplace-sections.js';
 import { computeProviderTrust, type ProviderTrustSummary } from './trust-score.js';
 
@@ -31,9 +32,15 @@ export async function buildMergedCatalog(ctx: AppContext): Promise<MergedCatalog
     ctx.db.apiListings.listPublished(),
   ]);
 
-  const [routeCounts, listingCounts] = await Promise.all([
+  const [routeCounts, listingCounts, availability] = await Promise.all([
     ctx.db.apiRequests.countsByRoutes(firstPartyRaw.map((a) => a.endpoint), since7d),
     ctx.db.apiRequests.countsByListingIds(thirdPartyRaw.map((l) => l.id), since7d),
+    computeCatalogAvailability(
+      ctx,
+      firstPartyRaw.map((a) => a.endpoint),
+      thirdPartyRaw.map((l) => l.id),
+      now,
+    ),
   ]);
 
   // Many listings can share the same provider account — compute each
@@ -66,6 +73,7 @@ export async function buildMergedCatalog(ctx: AppContext): Promise<MergedCatalog
     // No review system exists yet (Phase 10 scope) — honest empty state, not a fabricated rating.
     avgRating: null,
     reviewCount: 0,
+    availabilityPct: availability.byRoute.get(api.endpoint) ?? null,
   }));
 
   const thirdPartyViews: MarketplaceApi[] = await Promise.all(
@@ -94,6 +102,7 @@ export async function buildMergedCatalog(ctx: AppContext): Promise<MergedCatalog
         callCount7d: listingCounts.get(listing.id) ?? 0,
         avgRating: listing.avgRating,
         reviewCount: listing.reviewCount,
+        availabilityPct: availability.byListingId.get(listing.id) ?? null,
       };
     }),
   );

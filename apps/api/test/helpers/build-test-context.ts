@@ -4,6 +4,7 @@ import { createPrismaClient, Database } from '@agentmarket/database';
 import { IntelligenceEngine, RuleBasedExplainer } from '@agentmarket/intelligence-engine';
 import { createPaymentProviderRegistry, X402PaymentService } from '@agentmarket/payments';
 import type { AppContext } from '../../src/context.js';
+import { initTracingForTests } from '../../src/observability/tracing.js';
 import { RateLimiterService } from '../../src/services/rate-limiter.js';
 import { buildMockProviderRegistry } from './mock-provider-registry.js';
 
@@ -23,6 +24,8 @@ export function buildTestConfig(overrides: Partial<ApiConfig> = {}): ApiConfig {
 }
 
 export function buildTestContext(overrides: Partial<ApiConfig> = {}): AppContext {
+  initTracingForTests();
+
   const config = buildTestConfig(overrides);
   const db = new Database(createPrismaClient(config.database.url));
   const cache = createCache('memory');

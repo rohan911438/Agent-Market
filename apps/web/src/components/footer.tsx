@@ -1,4 +1,5 @@
 import { Zap } from 'lucide-react';
+import Link from 'next/link';
 
 export function Footer() {
   return (
@@ -14,6 +15,9 @@ export function Footer() {
           The marketplace for AI agent commerce — powered by x402 and settled on Algorand.
         </p>
         <p className="text-xs text-muted-2">Autonomous, per-request API commerce. No API keys, no subscriptions.</p>
+        <Link href="/status" className="text-xs text-muted-2 underline decoration-dotted underline-offset-4 hover:text-muted">
+          System status
+        </Link>
       </div>
     </footer>
   );

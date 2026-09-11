@@ -1,4 +1,5 @@
 import 'fastify';
+import type { Span } from '@opentelemetry/api';
 import type { ProviderAccount } from '@prisma/client';
 import type { ErrorCode, PaymentPayload, PaymentRequirement, WorkflowStepInput } from '@agentmarket/shared-types';
 
@@ -6,6 +7,8 @@ declare module 'fastify' {
   interface FastifyRequest {
     requestId: string;
     startTimeMs: number;
+    /** The root OpenTelemetry span for this request (Phase 13) — its trace id *is* `requestId`. Every child span (rate limit, payment gate, handler) hangs off this. */
+    otelSpan?: Span;
     validated?: {
       query?: unknown;
       body?: unknown;

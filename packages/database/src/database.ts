@@ -11,6 +11,7 @@ import { PayoutRepository } from './repositories/payout.repository.js';
 import { ProviderAccountRepository } from './repositories/provider-account.repository.js';
 import { ProviderRepository } from './repositories/provider.repository.js';
 import { RateLimitRepository } from './repositories/rate-limit.repository.js';
+import { SyntheticCheckRepository } from './repositories/synthetic-check.repository.js';
 import { UsageRepository } from './repositories/usage.repository.js';
 import { UserRepository } from './repositories/user.repository.js';
 import { WalletRepository } from './repositories/wallet.repository.js';
@@ -35,6 +36,7 @@ export class Database {
   readonly apiListings: ApiListingRepository;
   readonly payouts: PayoutRepository;
   readonly collections: CollectionRepository;
+  readonly syntheticChecks: SyntheticCheckRepository;
 
   constructor(readonly prisma: PrismaClient = getPrismaClient()) {
     this.users = new UserRepository(prisma);
@@ -51,6 +53,7 @@ export class Database {
     this.apiListings = new ApiListingRepository(prisma);
     this.payouts = new PayoutRepository(prisma);
     this.collections = new CollectionRepository(prisma);
+    this.syntheticChecks = new SyntheticCheckRepository(prisma);
   }
 
   disconnect(): Promise<void> {
