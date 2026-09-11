@@ -6,9 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardBody } from '@/components/ui/card';
 import { JsonViewer } from '@/components/ui/json-viewer';
 import { Marquee, type MarqueeItem } from '@/components/ui/marquee';
-import { Skyline } from '@/components/ui/skyline';
 import { TerminalWindow } from '@/components/ui/terminal-window';
 import { motion } from 'framer-motion';
+import Image from 'next/image';
 import {
   Activity,
   ArrowRight,
@@ -92,6 +92,22 @@ export default function LandingPage() {
       <section className="px-4 pt-6 sm:px-6">
         <div className="relative mx-auto max-w-7xl overflow-hidden rounded-3xl border border-border bg-[#050507] shadow-card-hover">
           <div className="pointer-events-none absolute inset-0 overflow-hidden">
+            <div
+              className="absolute inset-x-0 bottom-0 h-[70%]"
+              style={{
+                maskImage: 'linear-gradient(to bottom, transparent, black 35%)',
+                WebkitMaskImage: 'linear-gradient(to bottom, transparent, black 35%)',
+              }}
+            >
+              <Image
+                src="/images/hero-skyline.png"
+                alt="Manhattan skyline at dusk"
+                fill
+                priority
+                sizes="100vw"
+                className="object-cover object-bottom opacity-80 saturate-[0.8]"
+              />
+            </div>
             <div className="animate-drift absolute -left-32 -top-32 h-[30rem] w-[30rem] rounded-full bg-primary/35 blur-[110px]" />
             <div
               className="animate-drift absolute -right-24 top-1/4 h-[26rem] w-[26rem] rounded-full bg-payment/30 blur-[110px]"
@@ -101,9 +117,9 @@ export default function LandingPage() {
               className="animate-drift absolute bottom-0 left-1/3 h-[24rem] w-[24rem] rounded-full bg-accent/20 blur-[110px]"
               style={{ animationDelay: '-12s' }}
             />
-            <div className="bg-grid absolute inset-0 opacity-[0.12]" />
-            <Skyline className="absolute inset-x-0 bottom-0 h-[46%] w-full opacity-70" />
-            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/5 to-black/85" />
+            <div className="bg-grid absolute inset-0 opacity-[0.08]" />
+            <div className="absolute inset-0 bg-gradient-to-b from-[#050507] via-[#050507]/70 to-[#050507]/90" />
+            <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[#050507] to-transparent" />
           </div>
 
           <div className="relative flex flex-col items-center gap-7 px-6 pb-28 pt-20 text-center sm:pb-32 sm:pt-28">
