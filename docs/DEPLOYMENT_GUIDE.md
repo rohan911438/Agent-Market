@@ -55,12 +55,24 @@ features. To move to Postgres:
 
 ## CI
 
-`.github/workflows/ci.yml` runs on every push/PR: install → generate → schema-drift
-check → lint → typecheck → build → test, across the whole monorepo via Turborepo's
-dependency-aware task graph (a package only rebuilds/retests if it or something it
-depends on changed). The schema-drift check (`prisma migrate diff --exit-code` against
-`packages/database/prisma/migrations`) fails the build if `schema.prisma` changed
-without a matching committed migration.
+`.github/workflows/ci.yml` runs on every push/PR: install → dependency audit →
+generate → schema-drift check → lint → typecheck → build → test, across the whole
+monorepo via Turborepo's dependency-aware task graph (a package only rebuilds/retests
+if it or something it depends on changed).
+
+- **Dependency audit**: `npm audit --omit=dev --audit-level=critical`. Scoped to
+  production dependencies and gated at `critical` for now, not `high` — see
+  `docs/SECURITY.md` ("Known gaps") for what that excludes and why.
+- **Schema-drift check**: `prisma migrate diff --exit-code` against
+  `packages/database/prisma/migrations` — fails the build if `schema.prisma` changed
+  without a matching committed migration.
+- **Test**: `apps/api`'s suite runs with coverage enabled (`vitest run --coverage`),
+  gated on the thresholds in `apps/api/vitest.config.ts`.
+
+A separate `dependency-review` job runs on PRs only, flagging newly-introduced
+vulnerable/incompatible-license dependencies in the diff (gated at `high`).
+`.github/dependabot.yml` opens weekly update PRs for both the npm and github-actions
+ecosystems.
 
 ## Database migrations in production
 

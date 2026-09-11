@@ -19,6 +19,7 @@
     "db:migrate:deploy": "npm run migrate:deploy --workspace=@agentmarket/database",
     "db:seed": "npm run seed --workspace=@agentmarket/database",
     "bootstrap": "node scripts/bootstrap.mjs",
+    "load-test": "node apps/api/scripts/load-test.mjs",
     "format": "prettier --write \"**/*.{ts,tsx,md,json}\" --ignore-path .gitignore"
   },
   "devDependencies": {
@@ -38,7 +39,8 @@
     "tsx": "^4.19.2",
     "algosdk": "^3.6.0",
     "@x402-avm/core": "^2.6.1",
-    "@x402-avm/avm": "^2.6.1"
+    "@x402-avm/avm": "^2.6.1",
+    "autocannon": "^8.0.0"
   },
   "engines": {
     "node": ">=20.0.0",

@@ -1,0 +1,46 @@
+# Optional local dev infra for parity with a scaled-up production setup.
+# `npm run dev` (SQLite + in-memory cache) works with zero external
+# infrastructure — nothing here is required for Phase 1 local dev.
+#
+# Usage:
+#   docker compose up -d              # Redis only
+#   docker compose --profile postgres up -d   # + Postgres
+#
+# Redis isn't wired to a concrete client yet (CACHE_DRIVER=redis needs
+# `createCache()` to be handed a real client — see packages/cache/src/factory.ts
+# and docs/ROADMAP.md Phase 2), so this is infrastructure prep, not something
+# `npm run dev` picks up automatically today.
+
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  postgres:
+    image: postgres:16-alpine
+    profiles: [postgres]
+    environment:
+      POSTGRES_USER: agentmarket
+      POSTGRES_PASSWORD: agentmarket
+      POSTGRES_DB: agentmarket
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U agentmarket']
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  redis-data:
+  postgres-data:

@@ -74,7 +74,36 @@ npm test              # every package + apps/api's integration suite
 
 `apps/api`'s integration tests spin up a throwaway SQLite database via
 `prisma db push` (see `apps/api/test/global-setup.ts`) and exercise the real Fastify
-server through `.inject()` — no separate server process needed.
+server through `.inject()` — no separate server process needed. `apps/api`'s suite
+runs with coverage enabled and is gated on the thresholds in
+`apps/api/vitest.config.ts`.
+
+## Load testing
+
+```bash
+npm run load-test     # basic autocannon run against a locally running apps/api
+```
+
+Requires `apps/api` already running (`npm run dev`) with `PAYMENT_PROVIDER=mock`, the
+default. Exercises the real `/v1/analyze` hot path — rate limiter, x402 verify/settle,
+intelligence engine, cache, DB writes — with a fresh payment nonce per request. See
+`apps/api/scripts/load-test.mjs` for options (target URL, duration, connections) and a
+note on the default rate limit dominating throughput from a single IP.
+
+## Optional: local dev infra (Redis / Postgres)
+
+`npm run dev` needs no external infrastructure — SQLite + the in-memory cache are the
+Phase 1 defaults. For parity with a scaled-up setup:
+
+```bash
+docker compose up -d                        # Redis only
+docker compose --profile postgres up -d     # + Postgres
+```
+
+Redis isn't wired to a concrete client yet (`CACHE_DRIVER=redis` needs `createCache()`
+handed a real client — see `packages/cache/src/factory.ts` and `docs/ROADMAP.md`
+Phase 2), so this is infrastructure prep, not something the app picks up automatically
+today.
 
 ## Optional: keyed providers
 
