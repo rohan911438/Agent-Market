@@ -38,13 +38,17 @@ inspects.
 ### `PAYMENT_PROVIDER=algorand-x402` (production)
 `AlgorandX402Provider` calls a real x402 facilitator's `/verify` and `/settle` HTTP
 endpoints against Algorand TestNet (or MainNet). In this mode the client must submit an
-actual signed Algorand payment transaction per the x402 `exact` scheme — built with the
-`@x402-avm/avm` client SDK plus `@algorandfoundation/algokit-utils` transaction signing
-(see `scripts/testnet/demo-payment.mjs` for a complete, working example that settles a
-real payment on TestNet). That construction is a drop-in replacement for
-`buildDemoPaymentHeader()`; the backend side (`AlgorandX402Provider`, the payment
-middleware, the idempotency/settlement logic) needs no further changes to go from mock
-to real payments — only environment variables:
+actual signed Algorand payment transaction per the x402 `exact` scheme, built with the
+`@x402-avm/avm` client SDK (`ExactAvmScheme`). The API Explorer does this for real now
+(`apps/web/src/lib/x402-client.ts`'s `buildRealPaymentHeader`, used whenever the 402
+response's `network` isn't `"mock"`) — signing is routed through the connected Pera
+Wallet session via `apps/web/src/lib/pera-signer.ts`'s `peraToClientAvmSigner`, which
+adapts `PeraWalletConnect.signTransaction` into the `ClientAvmSigner` interface
+`ExactAvmScheme` expects. `scripts/testnet/demo-payment.mjs` remains a useful
+Node-only reference for the same envelope-wrapping (raw-key signer, no wallet UI). The
+backend side (`AlgorandX402Provider`, the payment middleware, the idempotency/settlement
+logic) needs no further changes to go from mock to real payments — only environment
+variables:
 
 ```bash
 PAYMENT_PROVIDER=algorand-x402
@@ -86,6 +90,21 @@ payment middleware:
 
 This is what makes duplicate payments, replayed `X-PAYMENT` headers, and concurrent
 duplicate requests all safe by construction rather than by best-effort checking.
+
+## Known gap: real wallet signing is untested against a live Pera session
+
+`peraToClientAvmSigner` is written correctly against Pera's and `@x402-avm/avm`'s
+documented type contracts (verified: typecheck, lint, `next build` all pass; the
+`X-Wallet-Token` issue/verify/rate-limit-promotion round trip it depends on is verified
+against a running server), but the actual signing call —
+`PeraWalletConnect.signTransaction([group], address)` returning signed bytes for a
+2-transaction atomic group where one leg is deliberately skipped (`signers: []`) — has
+not been exercised against a real Pera mobile app or browser extension in this
+environment (no way to complete an actual wallet-approval prompt here). The adapter
+handles both plausible behaviors for how skipped legs come back (position-preserving
+`null`s vs. an omit-and-shift array — see the comment in `pera-signer.ts`), but that's
+a defensive hedge against documented ambiguity, not a substitute for testing it once
+against a real funded TestNet wallet before this goes to production.
 
 ## Budget limits
 

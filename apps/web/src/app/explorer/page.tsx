@@ -6,8 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardBody, CardHeader, CardTitle } from '@/components/ui/card';
 import { JsonViewer } from '@/components/ui/json-viewer';
 import { callApi } from '@/lib/api-client';
-import { buildDemoPaymentHeader } from '@/lib/x402-client';
+import { buildDemoPaymentHeader, buildRealPaymentHeader } from '@/lib/x402-client';
 import { useWallet } from '@/lib/wallet-context';
+import type { PaymentRequiredResponse } from '@agentmarket/shared-types';
 import { useState } from 'react';
 
 interface ExplorerEndpoint {
@@ -27,10 +28,10 @@ const ENDPOINTS: ExplorerEndpoint[] = [
   { path: '/v1/execution-readiness', label: 'Execution Readiness', price: 0.03, params: ['symbol'] },
 ];
 
-type FlowState = 'idle' | 'requesting' | 'paying' | 'success' | 'error';
+type FlowState = 'idle' | 'requesting' | 'signing' | 'paying' | 'success' | 'error';
 
 export default function ExplorerPage() {
-  const { address } = useWallet();
+  const { address, walletToken, setWalletToken, getSigner } = useWallet();
   const [endpointIndex, setEndpointIndex] = useState(0);
   const [symbol, setSymbol] = useState('BTC');
   const [state, setState] = useState<FlowState>('idle');
@@ -54,7 +55,7 @@ export default function ExplorerPage() {
     setState('requesting');
 
     const path = buildPath();
-    const first = await callApi(path, { walletAddress: address ?? undefined });
+    const first = await callApi(path, { walletAddress: address ?? undefined, walletToken: walletToken ?? undefined });
 
     if (first.status === 200) {
       setResponse(first.body);
@@ -76,9 +77,41 @@ export default function ExplorerPage() {
       return;
     }
 
-    setState('paying');
-    const header = buildDemoPaymentHeader(address);
-    const second = await callApi(path, { walletAddress: address, xPayment: header });
+    const { x402Version, accepts } = first.body as PaymentRequiredResponse;
+    const requirement = accepts[0]!;
+
+    let header: string;
+    if (requirement.network === 'mock') {
+      setState('paying');
+      header = buildDemoPaymentHeader(address);
+    } else {
+      // Real Algorand payment — this is where the Pera signature prompt
+      // appears. A user declining it, or any other signing failure, lands
+      // in the catch below rather than as a 4xx from the API (the request
+      // never gets sent).
+      const signer = getSigner();
+      if (!signer) {
+        setError('Wallet not connected — reconnect and try again.');
+        setState('error');
+        return;
+      }
+      setState('signing');
+      try {
+        header = await buildRealPaymentHeader(signer, x402Version, requirement);
+      } catch (err) {
+        setError(
+          `Signing was cancelled or failed: ${err instanceof Error ? err.message : String(err)}`,
+        );
+        setState('error');
+        return;
+      }
+      setState('paying');
+    }
+
+    const second = await callApi(path, { walletAddress: address, walletToken: walletToken ?? undefined, xPayment: header });
+
+    const newWalletToken = second.headers.get('x-wallet-token');
+    if (newWalletToken) setWalletToken(newWalletToken);
 
     if (second.status === 200) {
       setResponse(second.body);
@@ -89,7 +122,7 @@ export default function ExplorerPage() {
     }
   }
 
-  const busy = state === 'requesting' || state === 'paying';
+  const busy = state === 'requesting' || state === 'signing' || state === 'paying';
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-12">
@@ -143,9 +176,13 @@ export default function ExplorerPage() {
 
             <Button className="w-full" onClick={() => void runFlow()} disabled={busy}>
               {state === 'requesting' && 'Requesting…'}
+              {state === 'signing' && 'Confirm in Pera Wallet…'}
               {state === 'paying' && 'Paying & retrying…'}
               {!busy && 'Send request'}
             </Button>
+            {state === 'signing' && (
+              <p className="text-center text-xs text-muted">Approve the payment in your Pera Wallet app.</p>
+            )}
           </CardBody>
         </Card>
 

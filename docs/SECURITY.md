@@ -73,9 +73,10 @@ accident — see "Known gaps" below for what that currently excludes and why.
   `postcss`/`sharp`, tracked separately. This is why CI's audit gate is
   currently `critical` rather than `high`; ratchet it back up to `high` once
   this is resolved.
-- The in-memory rate limiter and cache are single-process; a multi-instance deployment
-  needs `CACHE_DRIVER=redis` (the `RedisCache` adapter is written, just not wired to a
-  concrete redis client by default — see `packages/cache/src/redis-cache.ts`).
+- The default `CACHE_DRIVER=memory` cache/rate-limiter is single-process. Set
+  `CACHE_DRIVER=redis` + `REDIS_URL` for a multi-instance deployment — this is now
+  fully wired (`apps/api/src/build-context.ts` constructs a real `ioredis` client),
+  not just a written-but-unused adapter.
 - CSRF is not a concern for this API (no cookie-based session state; every metered
   request must carry its own payment proof), but a browser-based admin panel added
   later would need to reconsider this.

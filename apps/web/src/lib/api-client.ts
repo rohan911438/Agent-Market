@@ -10,6 +10,8 @@ export interface CallApiOptions {
   method?: 'GET' | 'POST';
   xPayment?: string;
   walletAddress?: string;
+  /** Proof-of-payment token from a prior settled payment — promotes the caller to the wallet rate-limit tier. */
+  walletToken?: string;
   body?: unknown;
 }
 
@@ -22,6 +24,7 @@ export async function callApi<T = unknown>(path: string, options: CallApiOptions
   const headers: Record<string, string> = { 'content-type': 'application/json' };
   if (options.xPayment) headers['x-payment'] = options.xPayment;
   if (options.walletAddress) headers['x-wallet-address'] = options.walletAddress;
+  if (options.walletToken) headers['x-wallet-token'] = options.walletToken;
 
   const res = await fetch(`${config.apiUrl}${path}`, {
     method: options.method ?? 'GET',

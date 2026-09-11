@@ -20,8 +20,13 @@ marketplace, pricing, docs), tests, docs, CI, deployment configs.
   wallet (Pera/Defly, WalletConnect) in `apps/web`, replacing the demo mock-payment
   payload builder — proven so far only via the Node.js script above, not the browser
   UI.
-- `RedisCache` wired to a concrete client for multi-instance rate-limit/cache
-  consistency.
+- ✅ `RedisCache` wired to a concrete client (`ioredis`, constructed in
+  `apps/api/src/build-context.ts` when `CACHE_DRIVER=redis`) for
+  multi-instance rate-limit/cache consistency. Verified end-to-end against a
+  real Redis instance — cache and rate-limiter state both round-trip
+  correctly. `packages/cache/src/redis-cache.test.ts` runs the same
+  contract tests as `MemoryCache` against a real Redis (local via
+  `docker compose up -d redis`, or CI's `redis` service).
 
 ## Phase 3 — Market Intelligence Depth
 

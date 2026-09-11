@@ -100,10 +100,9 @@ docker compose up -d                        # Redis only
 docker compose --profile postgres up -d     # + Postgres
 ```
 
-Redis isn't wired to a concrete client yet (`CACHE_DRIVER=redis` needs `createCache()`
-handed a real client — see `packages/cache/src/factory.ts` and `docs/ROADMAP.md`
-Phase 2), so this is infrastructure prep, not something the app picks up automatically
-today.
+`CACHE_DRIVER=redis` in `apps/api/.env` (with the Redis above running) switches the
+cache and rate-limiter to it — set `REDIS_URL=redis://localhost:6379` alongside it.
+Postgres is still infra prep only (Phase 1 stays on SQLite).
 
 ## Optional: keyed providers
 

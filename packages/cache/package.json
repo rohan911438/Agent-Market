@@ -19,5 +19,8 @@
     "test": "vitest run",
     "clean": "rimraf dist"
   },
-  "dependencies": {}
+  "dependencies": {},
+  "devDependencies": {
+    "ioredis": "^6.0.0"
+  }
 }
