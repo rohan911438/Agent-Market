@@ -1,4 +1,4 @@
-import { AppError } from '@agentmarket/shared-types';
+import { AppError } from '@rohankumar4179/shared-types';
 import { load as loadYaml } from 'js-yaml';
 
 const HTTP_METHODS = ['get', 'put', 'post', 'delete', 'options', 'head', 'patch', 'trace'] as const;

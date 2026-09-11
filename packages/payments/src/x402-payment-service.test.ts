@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { MockPaymentProvider } from './mock-payment-provider.js';
 import { X402PaymentService } from './x402-payment-service.js';
 import { encodePaymentPayload } from './x402-header-codec.js';
-import type { PaymentPayload } from '@agentmarket/shared-types';
+import type { PaymentPayload } from '@rohankumar4179/shared-types';
 
 describe('X402PaymentService', () => {
   it('returns kind "missing" when no X-PAYMENT header is present', async () => {

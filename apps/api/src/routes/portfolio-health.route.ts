@@ -3,7 +3,7 @@ import {
   PortfolioHealthResponseSchema,
   type PortfolioHealthRequest,
   type PortfolioHealthResponse,
-} from '@agentmarket/shared-types';
+} from '@rohankumar4179/shared-types';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import type { AppContext } from '../context.js';
 import type { MeteredHandlerResult } from './register-metered-route.js';

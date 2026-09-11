@@ -1,4 +1,4 @@
-import { DiscoverRequestSchema, type DiscoverResponse } from '@agentmarket/shared-types';
+import { DiscoverRequestSchema, type DiscoverResponse } from '@rohankumar4179/shared-types';
 import type { FastifyInstance } from 'fastify';
 import type { AppContext } from '../context.js';
 import { buildMergedCatalog } from '../services/catalog.js';

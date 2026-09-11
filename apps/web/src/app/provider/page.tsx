@@ -20,7 +20,7 @@ import {
 } from '@/lib/provider-api';
 import { useProviderSession } from '@/lib/provider-context';
 import { listingStatusBadge, providerStatusBadge, verificationTierBadge } from '@/lib/provider-status';
-import type { AnalyticsRange, AnalyticsSummaryView, ApiListingView, ProviderAccountView, RevenueSummaryView } from '@agentmarket/shared-types';
+import type { AnalyticsRange, AnalyticsSummaryView, ApiListingView, ProviderAccountView, RevenueSummaryView } from '@rohankumar4179/shared-types';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Activity, DollarSign, KeyRound, LogOut, Plus, RefreshCw, ShieldCheck, Store } from 'lucide-react';
 import Link from 'next/link';

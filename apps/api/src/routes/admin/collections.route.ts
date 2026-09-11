@@ -1,4 +1,4 @@
-import { UpsertCollectionRequestSchema, type CollectionView } from '@agentmarket/shared-types';
+import { UpsertCollectionRequestSchema, type CollectionView } from '@rohankumar4179/shared-types';
 import type { Collection } from '@prisma/client';
 import type { FastifyInstance } from 'fastify';
 import type { AppContext } from '../../context.js';

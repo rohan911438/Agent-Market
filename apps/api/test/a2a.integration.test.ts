@@ -1,5 +1,5 @@
 import { encodePaymentPayload } from '@agentmarket/payments';
-import { A2AAgentCardSchema, A2AJsonRpcResponseSchema, A2ATaskSchema } from '@agentmarket/shared-types';
+import { A2AAgentCardSchema, A2AJsonRpcResponseSchema, A2ATaskSchema } from '@rohankumar4179/shared-types';
 import type { FastifyInstance } from 'fastify';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildServer } from '../src/server.js';

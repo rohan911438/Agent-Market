@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { decodePaymentHeader, encodePaymentPayload } from './x402-header-codec.js';
-import type { PaymentPayload } from '@agentmarket/shared-types';
+import type { PaymentPayload } from '@rohankumar4179/shared-types';
 
 describe('x402 header codec', () => {
   it('round-trips a payload through encode/decode', () => {

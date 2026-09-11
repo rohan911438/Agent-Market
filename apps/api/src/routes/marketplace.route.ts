@@ -1,4 +1,4 @@
-import type { MarketplaceApi, MarketplaceCollection, MarketplaceResponse } from '@agentmarket/shared-types';
+import type { MarketplaceApi, MarketplaceCollection, MarketplaceResponse } from '@rohankumar4179/shared-types';
 import type { FastifyInstance } from 'fastify';
 import type { AppContext } from '../context.js';
 import { buildMergedCatalog } from '../services/catalog.js';

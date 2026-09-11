@@ -11,7 +11,7 @@
     "clean": "rimraf .next"
   },
   "dependencies": {
-    "@agentmarket/shared-types": "*",
+    "@rohankumar4179/shared-types": "*",
     "@perawallet/connect": "^1.6.0",
     "@x402-avm/avm": "^2.6.1",
     "algosdk": "^3.6.0",

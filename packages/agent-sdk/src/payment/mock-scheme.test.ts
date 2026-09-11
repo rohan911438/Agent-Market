@@ -1,4 +1,4 @@
-import type { PaymentRequirement } from '@agentmarket/shared-types';
+import type { PaymentRequirement } from '@rohankumar4179/shared-types';
 import { describe, expect, it } from 'vitest';
 import { createMockPaymentScheme } from './mock-scheme.js';
 

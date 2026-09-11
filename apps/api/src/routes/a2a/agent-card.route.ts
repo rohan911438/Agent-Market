@@ -1,4 +1,4 @@
-import type { A2AAgentCard } from '@agentmarket/shared-types';
+import type { A2AAgentCard } from '@rohankumar4179/shared-types';
 import type { FastifyInstance } from 'fastify';
 import type { AppContext } from '../../context.js';
 import { buildCatalogTools } from '../../services/mcp-catalog.js';

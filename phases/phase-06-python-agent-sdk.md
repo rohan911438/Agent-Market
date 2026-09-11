@@ -2,7 +2,7 @@
 
 ## Context
 
-`packages/agent-sdk` (`@agentmarket/agent-sdk`, TypeScript) is the reference implementation of AgentMarket's demand-side client — `AgentMarketClient` running the 402 → pay → 200 loop behind a fluent `.call().fallback().withRetries()` API, pluggable `PaymentScheme`s (mock for dev, real Algorand settlement via `@x402-avm/avm` for production), shareable `Budget`s, transient-only retries, and usage tracking. Read `packages/agent-sdk/README.md` and `packages/agent-sdk/src/client.ts` before starting — this phase ports the *design*, not a line-by-line transliteration, since Python's idioms (sync vs. async, context managers, dataclasses) differ from the TS version's.
+`packages/agent-sdk` (`@rohankumar4179/agent-sdk`, TypeScript) is the reference implementation of AgentMarket's demand-side client — `AgentMarketClient` running the 402 → pay → 200 loop behind a fluent `.call().fallback().withRetries()` API, pluggable `PaymentScheme`s (mock for dev, real Algorand settlement via `@x402-avm/avm` for production), shareable `Budget`s, transient-only retries, and usage tracking. Read `packages/agent-sdk/README.md` and `packages/agent-sdk/src/client.ts` before starting — this phase ports the *design*, not a line-by-line transliteration, since Python's idioms (sync vs. async, context managers, dataclasses) differ from the TS version's.
 
 Python matters because most of the existing agent-framework ecosystem (LangChain, LlamaIndex, CrewAI) lives there — this is the other half of the "Tier 0" SDK commitment from the platform strategy, deliberately built as its own phase rather than rushed alongside the TypeScript one.
 

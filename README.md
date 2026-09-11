@@ -51,6 +51,51 @@ defaults to an in-process mock so the full 402 → pay → 200 flow works immedi
 [docs/INSTALLATION.md](docs/INSTALLATION.md) for the real Algorand TestNet path and
 [docs/DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md) for shipping it.
 
+## On-chain payment details (Algorand TestNet)
+
+Every metered call settles as a real, verifiable Algorand TestNet transaction — no
+mocked ledger. The `exact` x402 scheme currently in use is a USDC (ASA) transfer,
+optionally split into a 2-transaction atomic group when the facilitator sponsors the
+payer's network fee.
+
+| | Address / ID | Explorer |
+|---|---|---|
+| Network | Algorand TestNet (`algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDexi9/cOUJOiI=`, CAIP-2) | — |
+| Merchant (`payTo`) address | `GCPQKFXROLMZV43GID7IYZ6HI4KNPTMHVFZQH3MKP3MKPLI4D3PHKV2R34` | [View on Lora](https://lora.algokit.io/testnet/account/GCPQKFXROLMZV43GID7IYZ6HI4KNPTMHVFZQH3MKP3MKPLI4D3PHKV2R34) |
+| USDC asset (ASA ID `10458941`) | TestNet USDC | [View on Lora](https://lora.algokit.io/testnet/asset/10458941) |
+| Facilitator fee-payer address | `ZMFK2OI7ZBD2U27ISERZC4S6LKM6WMFJPZQ4MYNJDZ2VNBNMBA67RA22AA` | [View on Lora](https://lora.algokit.io/testnet/account/ZMFK2OI7ZBD2U27ISERZC4S6LKM6WMFJPZQ4MYNJDZ2VNBNMBA67RA22AA) |
+| Facilitator | [facilitator.goplausible.xyz](https://facilitator.goplausible.xyz) — verifies + settles every `/verify` and `/settle` call | — |
+
+There is no custom on-chain smart contract — AgentMarket is a metering/pricing layer in
+front of a standard x402 facilitator, so the only "contract" surface is the ASA above and
+the addresses it moves funds between. See [docs/PAYMENT_FLOW.md](docs/PAYMENT_FLOW.md) for
+the full 402 → sign → pay → 200 sequence, and
+[scripts/testnet/demo-payment.mjs](scripts/testnet/demo-payment.mjs) for a script that
+proves it end-to-end against the live facilitator with a real signed transaction.
+
+## SDKs
+
+Autonomous agents call metered endpoints through a client SDK that handles the 402 → pay
+→ 200 loop, budgets, retries, and fallbacks automatically — see
+[docs/DEVELOPER_GUIDE.md](docs/DEVELOPER_GUIDE.md) for usage.
+
+| | Package | Source |
+|---|---|---|
+| TypeScript | [`@rohankumar4179/agent-sdk`](https://www.npmjs.com/package/@rohankumar4179/agent-sdk) on npm | [packages/agent-sdk](packages/agent-sdk) |
+| Python | `agentmarket-sdk` — publishing to PyPI in progress | [packages/agent-sdk-python](packages/agent-sdk-python) |
+
+Its types/schemas come from [`@rohankumar4179/shared-types`](https://www.npmjs.com/package/@rohankumar4179/shared-types),
+published separately and pulled in automatically.
+
+```bash
+npm install @rohankumar4179/agent-sdk
+# or
+pip install agentmarket-sdk
+```
+
+Until the Python package's first publish lands, install it straight from source:
+clone the repo, then `pip install ./packages/agent-sdk-python`.
+
 ## Project structure
 
 ```
@@ -94,4 +139,3 @@ Prisma + SQLite (Postgres-ready) · x402 on Algorand · npm workspaces + Turbore
 ## License
 
 Unlicensed — internal MVP.
-"# Agent-Market" 

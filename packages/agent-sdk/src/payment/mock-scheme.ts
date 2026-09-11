@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import type { PaymentPayload, PaymentRequirement } from '@agentmarket/shared-types';
+import type { PaymentPayload, PaymentRequirement } from '@rohankumar4179/shared-types';
 import type { PaymentScheme } from '../types.js';
 
 /**

@@ -1,7 +1,7 @@
 import { ExactAvmScheme } from '@x402-avm/avm/exact/client';
 import type { ClientAvmSigner } from '@x402-avm/avm';
 import type { PaymentRequirements } from '@x402-avm/core/types';
-import type { PaymentRequirement } from '@agentmarket/shared-types';
+import type { PaymentRequirement } from '@rohankumar4179/shared-types';
 import algosdk from 'algosdk';
 import { config } from './config';
 

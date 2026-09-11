@@ -4,7 +4,7 @@ import type {
   PaymentRequirement,
   PaymentSettleResult,
   PaymentVerifyResult,
-} from '@agentmarket/shared-types';
+} from '@rohankumar4179/shared-types';
 import type { PaymentContext, PaymentProvider } from './payment-provider.interface.js';
 
 export interface AlgorandX402ProviderConfig {

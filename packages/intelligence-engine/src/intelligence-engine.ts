@@ -1,5 +1,5 @@
 import type { ApiProviderRegistry } from '@agentmarket/providers';
-import type { AnalyzeResponse, ResponseMeta } from '@agentmarket/shared-types';
+import type { AnalyzeResponse, ResponseMeta } from '@rohankumar4179/shared-types';
 import type { Explainer } from './explainers/explainer.interface.js';
 import { collectMarketData } from './stages/collect-market-data.js';
 import { confidenceCalculator } from './stages/confidence-calculator.js';

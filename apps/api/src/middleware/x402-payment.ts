@@ -1,5 +1,5 @@
 import { Prisma } from '@agentmarket/database';
-import { AppError } from '@agentmarket/shared-types';
+import { AppError } from '@rohankumar4179/shared-types';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { AppContext } from '../context.js';
 import { signWalletToken } from '../services/wallet-token.js';

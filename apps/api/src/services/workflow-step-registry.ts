@@ -1,4 +1,4 @@
-import { PortfolioHealthRequestSchema } from '@agentmarket/shared-types';
+import { PortfolioHealthRequestSchema } from '@rohankumar4179/shared-types';
 import type { FastifyRequest } from 'fastify';
 import type { ZodType } from 'zod';
 import type { AppContext } from '../context.js';

@@ -21,6 +21,6 @@
   },
   "dependencies": {
     "@agentmarket/providers": "*",
-    "@agentmarket/shared-types": "*"
+    "@rohankumar4179/shared-types": "*"
   }
 }

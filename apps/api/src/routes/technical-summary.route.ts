@@ -1,5 +1,5 @@
 import { buildCacheKey, ttlFor } from '@agentmarket/cache';
-import { SymbolSchema, TechnicalSummaryResponseSchema, TimeframeSchema, type TechnicalSummaryResponse } from '@agentmarket/shared-types';
+import { SymbolSchema, TechnicalSummaryResponseSchema, TimeframeSchema, type TechnicalSummaryResponse } from '@rohankumar4179/shared-types';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import type { AppContext } from '../context.js';

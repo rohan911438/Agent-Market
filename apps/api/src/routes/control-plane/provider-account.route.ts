@@ -1,4 +1,4 @@
-import { AppError, RegisterProviderRequestSchema } from '@agentmarket/shared-types';
+import { AppError, RegisterProviderRequestSchema } from '@rohankumar4179/shared-types';
 import type { FastifyInstance } from 'fastify';
 import type { AppContext } from '../../context.js';
 import { createProviderAuthPreHandler } from '../../middleware/provider-auth.js';

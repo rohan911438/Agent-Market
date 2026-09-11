@@ -1,4 +1,4 @@
-import type { PaymentPayload, PaymentRequiredResponse, PaymentRequirement } from '@agentmarket/shared-types';
+import type { PaymentPayload, PaymentRequiredResponse, PaymentRequirement } from '@rohankumar4179/shared-types';
 import type { PaymentProvider } from './payment-provider.interface.js';
 import { decodePaymentHeader } from './x402-header-codec.js';
 

@@ -1,4 +1,4 @@
-import type { PaymentPayload, PaymentRequiredResponse } from '@agentmarket/shared-types';
+import type { PaymentPayload, PaymentRequiredResponse } from '@rohankumar4179/shared-types';
 
 export interface FakeResource {
   priceUsd: number;

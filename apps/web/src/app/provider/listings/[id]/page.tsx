@@ -16,7 +16,7 @@ import {
 } from '@/lib/provider-api';
 import { useProviderSession } from '@/lib/provider-context';
 import { listingStatusBadge, providerStatusBadge } from '@/lib/provider-status';
-import type { ApiListingView, PricingModel, ProviderAccountView, PublishRequirement } from '@agentmarket/shared-types';
+import type { ApiListingView, PricingModel, ProviderAccountView, PublishRequirement } from '@rohankumar4179/shared-types';
 import { ArrowLeft, Check, CircleDollarSign, Rocket, Wallet, X } from 'lucide-react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';

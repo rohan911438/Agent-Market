@@ -1,4 +1,4 @@
-import type { McpManifest } from '@agentmarket/shared-types';
+import type { McpManifest } from '@rohankumar4179/shared-types';
 import { Server } from '@modelcontextprotocol/sdk/server';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { CallToolRequestSchema, ErrorCode, ListToolsRequestSchema, McpError } from '@modelcontextprotocol/sdk/types.js';
@@ -74,7 +74,7 @@ export function registerMcpRoutes(server: FastifyInstance, ctx: AppContext): voi
             text:
               `AgentMarket's MCP server is discovery-only in this phase — it doesn't proxy tool calls yet. ` +
               `Call this endpoint directly instead: ${tool.agentmarket.method} ${tool.agentmarket.resource} (${price}). ` +
-              `See @agentmarket/agent-sdk for a client that handles the x402 payment handshake automatically.`,
+              `See @rohankumar4179/agent-sdk for a client that handles the x402 payment handshake automatically.`,
           },
         ],
       };

@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  transpilePackages: ['@agentmarket/shared-types'],
+  transpilePackages: ['@rohankumar4179/shared-types'],
 };
 
 export default nextConfig;

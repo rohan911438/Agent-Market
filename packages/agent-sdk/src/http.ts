@@ -1,4 +1,4 @@
-import type { PaymentRequiredResponse } from '@agentmarket/shared-types';
+import type { PaymentRequiredResponse } from '@rohankumar4179/shared-types';
 import { HttpError, PaymentFailedError } from './errors.js';
 import type { CallParams } from './types.js';
 

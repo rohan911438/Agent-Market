@@ -1,5 +1,5 @@
 import type { PublishedApiListing } from '@agentmarket/database';
-import type { MarketplaceApi } from '@agentmarket/shared-types';
+import type { MarketplaceApi } from '@rohankumar4179/shared-types';
 import type { MarketplaceApi as MarketplaceApiRow, ProviderAccount } from '@prisma/client';
 import type { AppContext } from '../context.js';
 import { computeCatalogAvailability } from './availability.js';

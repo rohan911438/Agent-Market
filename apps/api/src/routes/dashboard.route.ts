@@ -1,4 +1,4 @@
-import { AppError } from '@agentmarket/shared-types';
+import { AppError } from '@rohankumar4179/shared-types';
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import type { AppContext } from '../context.js';

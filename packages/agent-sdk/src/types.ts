@@ -1,4 +1,4 @@
-import type { PaymentPayload, PaymentRequirement } from '@agentmarket/shared-types';
+import type { PaymentPayload, PaymentRequirement } from '@rohankumar4179/shared-types';
 import type { Budget } from './budget.js';
 
 /** USDC (and this SDK's mock currency) both use 6 decimal places — see AlgorandX402Provider/MockPaymentProvider on the server. */
