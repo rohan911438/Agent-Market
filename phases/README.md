@@ -15,18 +15,18 @@ Work through them roughly in order — later phases assume earlier ones exist (e
 | 01 | Control-Plane API | ✅ Done | `apps/api/src/routes/control-plane/`, `packages/database` (`ProviderAccount`, `ApiListing`) |
 | 02 | Provider Dashboard UI | ✅ Done | `apps/web/src/app/provider/` |
 | 03 | Agent SDK (TypeScript) | ✅ Done | `packages/agent-sdk` |
-| 04 | Protocol-Native Catalog (OpenAPI + MCP) | 🔲 Not started | |
-| 05 | A2A Protocol Support | 🔲 Not started | Depends on 04 (same spec-generation pipeline) |
-| 06 | Python Agent SDK | 🔲 Not started | Ports `packages/agent-sdk`'s design, not its code |
-| 07 | Revenue Platform | 🔲 Not started | |
-| 08 | Trust & Verification Ladder | 🔲 Not started | Extends the control plane from phase 01 |
-| 09 | Analytics | 🔲 Not started | Depends on 07's event/usage plumbing where it overlaps |
-| 10 | Marketplace Storefront | 🔲 Not started | Depends on 08 (badges) and 04 (compatibility icons) |
-| 11 | AI Discovery | 🔲 Not started | Depends on 09 (needs usage data to rank on) |
-| 12 | Orchestration Engine | 🔲 Not started | Depends on 01 (listings) and payments already in place |
-| 13 | Observability | 🔲 Not started | Cross-cutting — touches every route added by later phases |
+| 04 | Protocol-Native Catalog (OpenAPI + MCP) | ✅ Done | `apps/api/src/routes/catalog/`, `apps/api/src/services/{openapi-spec,mcp-catalog,first-party-openapi}.ts` |
+| 05 | A2A Protocol Support | ✅ Done | `apps/api/src/routes/a2a/` (agent card + task lifecycle) |
+| 06 | Python Agent SDK | ✅ Done | `packages/agent-sdk-python` |
+| 07 | Revenue Platform | ✅ Done | `apps/api/src/services/revenue.ts` |
+| 08 | Trust & Verification Ladder | ✅ Done | `apps/api/src/services/trust-score.ts` |
+| 09 | Analytics | ✅ Done | `apps/api/src/services/analytics.ts` |
+| 10 | Marketplace Storefront | ✅ Done | `apps/web/src/app/marketplace/` |
+| 11 | AI Discovery | ✅ Done | `apps/api/src/routes/discover.route.ts`, `services/discovery-ranking.ts` |
+| 12 | Orchestration Engine | ✅ Done | `apps/api/src/routes/workflows.route.ts`, `services/workflow-executor.ts` |
+| 13 | Observability | ✅ Done | `apps/api/src/observability/`, `services/availability.ts`, `apps/web/src/app/status/` |
 
-Phases 1–3 are marked done and kept in this folder as a record of what shipped and why, not as prompts to re-run.
+All 13 phases are done. The per-phase files are kept in this folder as a record of what shipped and why, not as prompts to re-run.
 
 ## Ground rules that apply to every phase (don't repeat per-file)
 
