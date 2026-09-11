@@ -1,0 +1,45 @@
+{
+  "name": "agentmarket",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AgentMarket — x402-native marketplace for premium AI/financial-intelligence APIs on Algorand",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev --parallel",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "typecheck": "turbo run typecheck",
+    "clean": "turbo run clean",
+    "db:generate": "npm run generate --workspace=@agentmarket/database",
+    "db:migrate": "npm run migrate --workspace=@agentmarket/database",
+    "db:migrate:deploy": "npm run migrate:deploy --workspace=@agentmarket/database",
+    "db:seed": "npm run seed --workspace=@agentmarket/database",
+    "bootstrap": "node scripts/bootstrap.mjs",
+    "format": "prettier --write \"**/*.{ts,tsx,md,json}\" --ignore-path .gitignore"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "turbo": "^2.3.3",
+    "typescript": "^5.7.2",
+    "prettier": "^3.4.2",
+    "eslint": "^9.17.0",
+    "@eslint/js": "^9.17.0",
+    "@typescript-eslint/eslint-plugin": "^8.19.0",
+    "@typescript-eslint/parser": "^8.19.0",
+    "typescript-eslint": "^8.19.0",
+    "prettier-plugin-tailwindcss": "^0.6.9",
+    "vitest": "^2.1.8",
+    "@vitest/coverage-v8": "^2.1.8",
+    "rimraf": "^6.0.1",
+    "tsx": "^4.19.2"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  },
+  "packageManager": "npm@11.13.0"
+}
