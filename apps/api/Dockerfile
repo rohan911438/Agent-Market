@@ -42,7 +42,11 @@ RUN groupadd --system appuser && useradd --system --gid appuser --home /repo app
 # Production node_modules from `deps`, overlaid with the generated Prisma
 # client from `build` (schema-specific query engine — `prisma generate` needs
 # the `prisma` devDependency, which `deps` deliberately excludes).
-COPY --from=deps /repo/node_modules ./node_modules
+# Copying the whole `/repo` (not just node_modules) also brings along the
+# workspace package.json files `deps` used for `npm ci` — without them, the
+# `npm install` below finds no package.json/lockfile in this stage, treats
+# every workspace symlink in node_modules as extraneous, and prunes them all.
+COPY --from=deps /repo ./
 COPY --from=build /repo/node_modules/.prisma ./node_modules/.prisma
 # The `prisma` CLI itself (not just the generated @prisma/client) — needed at
 # boot to run `prisma migrate deploy` before the server starts serving
