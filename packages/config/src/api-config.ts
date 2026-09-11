@@ -1,6 +1,19 @@
 import { createSecretManager } from '@agentmarket/secrets';
 import { z } from 'zod';
 
+/**
+ * Strict boolean env var. `z.coerce.boolean()` runs `Boolean(value)`, so the
+ * string "false" (and "0", "no", …) coerces to `true` — only an unset/empty
+ * var ever reads as false. That's a footgun for operator-facing toggles like
+ * `X402_BAZAAR_DISCOVERY=false`. This accepts only the literals "true" /
+ * "false"; anything else fails loudly at boot.
+ */
+const envBool = (defaultValue: boolean) =>
+  z
+    .enum(['true', 'false'])
+    .default(defaultValue ? 'true' : 'false')
+    .transform((v) => v === 'true');
+
 const ApiEnvSchema = z
   .object({
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -35,7 +48,22 @@ const ApiEnvSchema = z
     // The client-side signer and provider logic are fully built and correct;
     // this flag exists so a future/alternate facilitator that does support
     // native-currency settlement can turn it on without any code changes.
-    X402_ENABLE_NATIVE_ALGO: z.coerce.boolean().default(false),
+    X402_ENABLE_NATIVE_ALGO: envBool(false),
+    // Global x402 Challenge attribution + discovery. CHALLENGE_TAG is
+    // stamped into every requirement's `extra.tag` so the GoPlausible
+    // facilitator files settlements under it (`x402-global-challenge` for
+    // the challenge leaderboard). BAZAAR_DISCOVERY makes each 402 carry the
+    // discovery descriptor so the resource is cataloged in the Bazaar after
+    // its first real settlement. MERCHANT_* control the Bazaar listing card
+    // (omit MERCHANT_NAME to let the facilitator read it from the endpoint
+    // domain's OpenGraph / llms.txt / agent-card.json).
+    X402_CHALLENGE_TAG: z.string().optional(),
+    X402_BAZAAR_DISCOVERY: envBool(false),
+    X402_MERCHANT_NAME: z.string().optional(),
+    X402_MERCHANT_WEBSITE: z.string().url().optional(),
+    X402_MERCHANT_LOGO: z.string().url().optional(),
+    // Comma-separated list, e.g. "api,algorand,x402,crypto-data".
+    X402_MERCHANT_CATEGORIES: z.string().optional(),
 
     RATE_LIMIT_ANON_PER_MIN: z.coerce.number().int().positive().default(30),
     RATE_LIMIT_WALLET_PER_MIN: z.coerce.number().int().positive().default(300),
@@ -133,6 +161,14 @@ export interface ApiConfig {
     usdcAssetId?: string;
     feePayerAddress?: string;
     enableNativeAlgo: boolean;
+    challengeTag?: string;
+    bazaarDiscovery: boolean;
+    merchant?: {
+      name: string;
+      website?: string;
+      logo?: string;
+      categories?: string[];
+    };
   };
   rateLimits: {
     anonymousPerMinute: number;
@@ -169,6 +205,20 @@ export function loadApiConfig(source?: Record<string, string | undefined>): ApiC
       usdcAssetId: secrets.getOptional('X402_USDC_ASSET_ID'),
       feePayerAddress: secrets.getOptional('X402_FEE_PAYER_ADDRESS'),
       enableNativeAlgo: secrets.get('X402_ENABLE_NATIVE_ALGO'),
+      challengeTag: secrets.getOptional('X402_CHALLENGE_TAG'),
+      bazaarDiscovery: secrets.get('X402_BAZAAR_DISCOVERY'),
+      merchant: secrets.getOptional('X402_MERCHANT_NAME')
+        ? {
+            name: secrets.getOptional('X402_MERCHANT_NAME')!,
+            website: secrets.getOptional('X402_MERCHANT_WEBSITE'),
+            logo: secrets.getOptional('X402_MERCHANT_LOGO'),
+            categories: secrets
+              .getOptional('X402_MERCHANT_CATEGORIES')
+              ?.split(',')
+              .map((c) => c.trim())
+              .filter(Boolean),
+          }
+        : undefined,
     },
     rateLimits: {
       anonymousPerMinute: secrets.get('RATE_LIMIT_ANON_PER_MIN'),

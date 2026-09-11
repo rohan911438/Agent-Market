@@ -57,12 +57,24 @@ export class WalletRepository {
     return affected > 0;
   }
 
-  /** Reverses a reservation made by `reserveDailySpend` when settlement subsequently fails. */
-  async releaseDailySpend(walletId: string, amountAtomic: bigint): Promise<void> {
+  /**
+   * Reverses a reservation made by `reserveDailySpend` when settlement
+   * subsequently fails.
+   *
+   * The `startOfTodayUtc` guard matters around UTC midnight: if the day
+   * rolled over between the reservation and this release, `reserveDailySpend`
+   * has already zeroed the counter for the day the reservation belonged to,
+   * so subtracting it now would come out of the *new* day's total and let
+   * the wallet overspend the new day's cap by the released amount. When the
+   * stored `dailySpendDate` is older than the current day we simply skip the
+   * subtraction — the rollover already discarded that amount.
+   */
+  async releaseDailySpend(walletId: string, amountAtomic: bigint, startOfTodayUtc: Date): Promise<void> {
     await this.prisma.$executeRaw`
       UPDATE "Wallet"
       SET "dailySpendAtomic" = CASE WHEN "dailySpendAtomic" - ${amountAtomic} > 0 THEN "dailySpendAtomic" - ${amountAtomic} ELSE 0 END
       WHERE "id" = ${walletId}
+        AND "dailySpendDate" >= ${startOfTodayUtc}
     `;
   }
 }

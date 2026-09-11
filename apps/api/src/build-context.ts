@@ -30,6 +30,9 @@ export function buildContext(overrideConfig?: ApiConfig): AppContext {
             payToAddress: config.payments.payToAddress!,
             usdcAssetId: config.payments.usdcAssetId!,
             feePayerAddress: config.payments.feePayerAddress,
+            challengeTag: config.payments.challengeTag,
+            bazaarDiscovery: config.payments.bazaarDiscovery,
+            merchant: config.payments.merchant,
           }
         : undefined,
   });

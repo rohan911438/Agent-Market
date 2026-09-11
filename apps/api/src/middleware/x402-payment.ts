@@ -1,4 +1,5 @@
 import { Prisma } from '@agentmarket/database';
+import type { RouteDiscovery } from '@agentmarket/payments';
 import { AppError } from '@rohankumar4179/shared-types';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { AppContext } from '../context.js';
@@ -7,6 +8,12 @@ import { signWalletToken } from '../services/wallet-token.js';
 export interface MeteredRouteMeta {
   resource: string;
   priceUsd: number;
+  /**
+   * Optional per-route Bazaar discovery enrichment — example query params /
+   * request body / response, used only to describe the endpoint in the
+   * discovery catalog. Omitted by routes that haven't opted in.
+   */
+  discovery?: RouteDiscovery;
   /**
    * Set by a caller proxying a published third-party listing (the gateway,
    * Phase 12+) so the resulting Payment/ApiRequest rows attribute revenue to
@@ -87,6 +94,7 @@ export function createX402PreHandler(
       resolvedMeta.resource,
       resolvedMeta.priceUsd,
       algoUsdPrice,
+      { method: request.method, discovery: resolvedMeta.discovery },
     );
     const header = headerValue(request.headers['x-payment']);
 
@@ -122,14 +130,21 @@ export function createX402PreHandler(
 
     let walletId: string | undefined;
     let reservedAtomic: bigint | undefined;
+    // Hoisted out of the `if` below so the failure paths further down can
+    // hand releaseDailySpend the same UTC-day boundary.
+    const now = new Date();
+    const startOfTodayUtc = new Date(now);
+    startOfTodayUtc.setUTCHours(0, 0, 0, 0);
     if (payerAddress) {
       const wallet = await ctx.db.wallets.touch(payerAddress, requirement.network);
       walletId = wallet.id;
 
-      const now = new Date();
-      const startOfTodayUtc = new Date(now);
-      startOfTodayUtc.setUTCHours(0, 0, 0, 0);
-      const amountAtomic = BigInt(requirement.maxAmountRequired);
+      // The daily spend cap is denominated in USD. Reserve against it in
+      // micro-USD derived from the route's USD price — NOT
+      // `requirement.maxAmountRequired`, which is micro-ALGO when the caller
+      // paid via the native-ALGO requirement and would otherwise be compared
+      // directly against a micro-USD cap (undercounting when ALGO > $1).
+      const amountAtomic = BigInt(Math.round(resolvedMeta.priceUsd * 1_000_000));
       const capAtomic = BigInt(Math.round(ctx.config.rateLimits.dailySpendCapUsd * 1_000_000));
 
       const reserved = await ctx.db.wallets.reserveDailySpend(walletId, amountAtomic, capAtomic, startOfTodayUtc, now);
@@ -155,7 +170,8 @@ export function createX402PreHandler(
         listingId: resolvedMeta.listingId,
       });
     } catch (err) {
-      if (walletId && reservedAtomic !== undefined) await ctx.db.wallets.releaseDailySpend(walletId, reservedAtomic);
+      if (walletId && reservedAtomic !== undefined)
+        await ctx.db.wallets.releaseDailySpend(walletId, reservedAtomic, startOfTodayUtc);
       const isUniqueConstraintViolation =
         err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002';
       if (!isUniqueConstraintViolation) throw err;
@@ -183,7 +199,8 @@ export function createX402PreHandler(
       };
     }
     if (!settleResult.success) {
-      if (walletId && reservedAtomic !== undefined) await ctx.db.wallets.releaseDailySpend(walletId, reservedAtomic);
+      if (walletId && reservedAtomic !== undefined)
+        await ctx.db.wallets.releaseDailySpend(walletId, reservedAtomic, startOfTodayUtc);
       await ctx.db.payments.markFailed(paymentRef);
       await ctx.db.auditLogs.record({
         actorType: 'wallet',

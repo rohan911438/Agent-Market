@@ -46,6 +46,39 @@ CORS_ORIGIN=https://<your-frontend-domain>
 Never set `PAYMENT_PROVIDER=mock` in production — that's a dev/test-only provider that
 verifies and settles every payment unconditionally.
 
+### Global x402 Challenge (Algorand MainNet)
+
+To enter the [Global x402 Challenge](https://algorand.co/global-x402-challenge), the same
+service runs against MainNet with challenge attribution and Bazaar discovery turned on:
+
+```
+ALGORAND_NETWORK=mainnet
+X402_FACILITATOR_URL=https://facilitator.goplausible.xyz
+X402_USDC_ASSET_ID=31566704          # MainNet USDC ASA (TestNet is 10458941)
+X402_PAY_TO_ADDRESS=<permanent MainNet address, opted in to ASA 31566704 — keep it fixed
+                     for the whole competition; it IS your leaderboard identity>
+X402_FEE_PAYER_ADDRESS=<extra.feePayer from GET {facilitator}/supported for MainNet>
+X402_CHALLENGE_TAG=x402-global-challenge   # stamped into every requirement's extra.tag;
+                                           # settlements without it don't count
+X402_BAZAAR_DISCOVERY=true                 # emit discovery metadata so the endpoint is
+                                           # cataloged after its first real settlement
+# Optional Bazaar listing-card identity (else read from the endpoint domain's
+# OpenGraph / llms.txt / agent-card.json):
+X402_MERCHANT_NAME=Agent Market
+X402_MERCHANT_WEBSITE=https://<your-frontend-domain>
+X402_MERCHANT_LOGO=https://<your-frontend-domain>/logo.png
+X402_MERCHANT_CATEGORIES=api,algorand,x402,crypto-intelligence
+```
+
+Checklist: (1) deploy to a public HTTPS host (not localhost — localhost settlements are
+filed under `DEV`); (2) validate the full flow on TestNet first; (3) complete one real
+MainNet settlement and confirm USDC lands in `X402_PAY_TO_ADDRESS`; (4) confirm the
+endpoint shows in the [Bazaar](https://facilitator.goplausible.xyz/discovery/resources)
+and on the leaderboard under the challenge tag; (5) register before the deadline. Do **not**
+drive volume with self-payments / cron loops from wallets you control — the rules exclude
+"artificial volume, wash transactions, repeated self-payments" and the facilitator files
+bot traffic under `DEV`.
+
 ## Migrating SQLite → Postgres
 
 The Prisma schema (`packages/database/prisma/schema.prisma`) uses no SQLite-only
