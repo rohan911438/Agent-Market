@@ -1,3 +1,8 @@
+databases:
+  - name: agentmarket-db
+    plan: basic-256mb
+    postgresMajorVersion: "16"
+
 services:
   - type: web
     name: agentmarket-api
@@ -10,15 +15,19 @@ services:
         value: production
       - key: PORT
         value: 4000
+      # Wired to the managed Postgres above. apps/api/docker-entrypoint.sh runs
+      # `prisma migrate deploy` against it on every boot before serving traffic.
       - key: DATABASE_URL
-        sync: false
+        fromDatabase:
+          name: agentmarket-db
+          property: connectionString
       - key: PAYMENT_PROVIDER
         value: algorand-x402
-      # Flip to `mainnet` for the Global x402 Challenge. When mainnet,
-      # X402_USDC_ASSET_ID must be 31566704 and X402_PAY_TO_ADDRESS must be a
-      # permanent address opted in to that ASA.
+      # `testnet` or `mainnet`. For the Global x402 Challenge set `mainnet`,
+      # with X402_USDC_ASSET_ID=31566704 and X402_PAY_TO_ADDRESS a permanent
+      # address opted in to that ASA.
       - key: ALGORAND_NETWORK
-        value: testnet
+        sync: false
       - key: X402_FACILITATOR_URL
         sync: false
       - key: X402_PAY_TO_ADDRESS

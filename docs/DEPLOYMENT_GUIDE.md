@@ -22,19 +22,17 @@ the repo in the Render dashboard and it picks up `render.yaml` as a Blueprint �
 service configuration needed beyond the `sync: false` env vars below, which Render will
 prompt for.
 
-**Do the "Migrating SQLite → Postgres" step below *before* your first real production
-deploy.** As shipped, `apps/api/Dockerfile`'s runtime image still boots on a local
-SQLite file (`file:./prod.db`) with no volume mounted — every deploy/restart wipes the
-database, and SQLite can't support more than one running instance. Pointing
-`DATABASE_URL` at a real Postgres connection string does **not** work by itself: the
-Prisma schema's `datasource provider` is hardcoded to `sqlite`, so the app will fail to
-boot against a `postgres://` URL until that's changed (step 1 below).
+The datastore is **Postgres**. `render.yaml` provisions a managed
+`agentmarket-db` and wires `DATABASE_URL` into the web service via
+`fromDatabase`, so the Blueprint stands up both together. On every boot
+`apps/api/docker-entrypoint.sh` runs `prisma migrate deploy` against it
+before the server starts serving traffic.
 
 Required environment variables in production:
 
 ```
 NODE_ENV=production
-DATABASE_URL=<postgres connection string — after completing the migration below>
+DATABASE_URL=<managed by render.yaml — set manually only if not using the Blueprint>
 PAYMENT_PROVIDER=algorand-x402
 ALGORAND_NETWORK=testnet   # or mainnet, once ready
 X402_FACILITATOR_URL=...
@@ -79,30 +77,33 @@ drive volume with self-payments / cron loops from wallets you control — the ru
 "artificial volume, wash transactions, repeated self-payments" and the facilitator files
 bot traffic under `DEV`.
 
-## Migrating SQLite → Postgres
+## Database (Postgres)
 
-The Prisma schema (`packages/database/prisma/schema.prisma`) uses no SQLite-only
-features. `docker-compose.yml` already provisions a local Postgres profile
-(`docker compose --profile postgres up -d`) for testing this migration before it goes
-anywhere near production. To move to Postgres:
+The Prisma datasource is `postgresql` and the committed migration history
+(`packages/database/prisma/migrations/`) is Postgres-native — a single
+`*_init` baseline generated with `prisma migrate dev` against a real
+Postgres, replacing the old SQLite history (SQLite and Postgres differ
+enough — `RedefineTables` vs `ALTER TABLE`, raw-SQL quoting — that the old
+one couldn't be replayed as-is).
 
-1. Change the datasource provider:
-   ```prisma
-   datasource db {
-     provider = "postgresql"
-     url      = env("DATABASE_URL")
-   }
-   ```
-2. Point `DATABASE_URL` at your Postgres instance.
-3. Regenerate migrations against Postgres and verify the full suite against it —
-   SQLite and Postgres differ enough (e.g. `RedefineTables` vs `ALTER TABLE`, raw-SQL
-   quoting) that the existing SQLite migration history can't just be replayed as-is.
-   Run `npx prisma migrate dev` from `packages/database` against your local Postgres
-   profile to generate a fresh, provider-correct migration history, then
-   `npx prisma migrate deploy` in each real environment.
-4. Only then does `apps/api/Dockerfile` need to change: drop the
-   "SQLite file, no volume mounted" comment/behavior and confirm `docker-entrypoint.sh`'s
-   `prisma migrate deploy` runs cleanly against the real `DATABASE_URL`.
+**Local dev / tests:**
+
+```bash
+docker compose --profile postgres up -d postgres
+# DATABASE_URL defaults to postgresql://agentmarket:agentmarket@localhost:5432/agentmarket
+npm run dev --workspace=@agentmarket/api      # or: npm test
+```
+
+The integration suite's `apps/api/test/global-setup.ts` drops and recreates
+the `public` schema, then `prisma db push`es the current schema before the
+suite runs — every run starts clean. CI runs its own `postgres:16` service.
+
+**Production:** `render.yaml` provisions the managed `agentmarket-db` and
+injects its connection string as `DATABASE_URL`. Migrations are applied by
+`apps/api/docker-entrypoint.sh` (`prisma migrate deploy`) on every boot,
+before the server accepts traffic — safe to re-run, it's a no-op when the DB
+is already current. To apply migrations out of band, run
+`npm run db:migrate:deploy` against the target `DATABASE_URL`.
 
 ## CI
 

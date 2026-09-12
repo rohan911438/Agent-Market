@@ -22,7 +22,9 @@ const ApiEnvSchema = z
     CORS_ORIGIN: z.string().default('http://localhost:3000'),
     LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
 
-    DATABASE_URL: z.string().default('file:./dev.db'),
+    // Postgres. Local dev: `docker compose --profile postgres up -d` then use
+    // the default below; production must set a real connection string.
+    DATABASE_URL: z.string().default('postgresql://agentmarket:agentmarket@localhost:5432/agentmarket'),
 
     CACHE_DRIVER: z.enum(['memory', 'redis']).default('memory'),
     REDIS_URL: z.string().optional(),

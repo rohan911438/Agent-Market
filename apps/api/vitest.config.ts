@@ -5,9 +5,9 @@ export default defineConfig({
     globalSetup: ['./test/global-setup.ts'],
     hookTimeout: 30_000,
     testTimeout: 15_000,
-    // Integration tests share one real SQLite file (see global-setup.ts).
-    // Running test files in parallel workers causes concurrent writers to
-    // hit SQLite file locks — force sequential execution instead.
+    // Integration tests share one real Postgres database (see global-setup.ts)
+    // and many assert on absolute row state, so parallel test files would race
+    // each other's writes — force sequential execution instead.
     fileParallelism: false,
     coverage: {
       provider: 'v8',
