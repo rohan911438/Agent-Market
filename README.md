@@ -52,7 +52,7 @@ real settlement through the GoPlausible facilitator. See
 
 ## Status
 
-All 13 platform-strategy phases are shipped — see [Platform capabilities](#platform-capabilities)
+All 14 platform-strategy phases are shipped — see [Platform capabilities](#platform-capabilities)
 and [phases/README.md](phases/README.md) for the full ledger. Core intelligence endpoints
 (`/analyze`, `/market-summary`, `/sentiment`, `/risk-analysis`, `/trending-assets`,
 `/execution-readiness`, `/portfolio-health`) run on real market data end-to-end.
@@ -216,7 +216,7 @@ config: [docs/DEPLOYMENT_GUIDE.md](docs/DEPLOYMENT_GUIDE.md).
 
 ## Platform capabilities
 
-All 13 phases of the platform strategy are done — this isn't just the pricing API, it's a
+All 14 phases of the platform strategy are done — this isn't just the pricing API, it's a
 full two-sided marketplace with agent-native discovery protocols on top.
 
 | # | Capability | Where |
@@ -234,6 +234,7 @@ full two-sided marketplace with agent-native discovery protocols on top.
 | 11 | AI-native discovery/ranking | `apps/api/src/routes/discover.route.ts` |
 | 12 | Orchestration engine (multi-step workflows) | `apps/api/src/routes/workflows.route.ts` |
 | 13 | Observability (OTel tracing, availability, status page) | `apps/api/src/observability/`, `apps/web/src/app/status/` |
+| 14 | MCP agent-native execution (`tools/call` runs for real, budgets, resources, prompts) | `apps/api/src/services/mcp-tool-executor.ts` — see [docs/MCP.md](docs/MCP.md) |
 
 See [phases/README.md](phases/README.md) for the per-phase implementation record.
 
@@ -246,9 +247,10 @@ Full request/response contracts: [docs/API.md](docs/API.md). Summary:
 | Free | `GET /health`, `GET /v1/marketplace`, `GET /v1/dashboard`, `GET /v1/discover` |
 | Metered intelligence | `GET /v1/analyze` ($0.05) · `/v1/market-summary` ($0.02) · `/v1/sentiment` ($0.02) · `/v1/risk-analysis` ($0.03) · `/v1/technical-summary` ($0.03) · `/v1/trending-assets` ($0.02) · `POST /v1/portfolio-health` ($0.04) · `/v1/execution-readiness` ($0.03) |
 | Orchestration | `POST /v1/workflows/execute` — compose multiple metered endpoints into one call |
+| Third-party gateway | `POST /v1/listings/:slug/invoke` — SSRF-guarded, x402-metered execution of a published listing's OpenAPI operation |
 | Provider control-plane | `POST/GET/PATCH /v1/listings*`, `/v1/providers/register`, `/v1/providers/me`, `/v1/providers/me/revenue`, `/v1/providers/me/analytics`, `/v1/providers/api-key/rotate` |
 | Admin | `/v1/admin/collections`, `/v1/admin/providers/:id/security-audit` |
-| Protocol-native discovery | `GET /.well-known/agent.json` (A2A agent card) · `GET /.well-known/mcp.json` + `POST /mcp` (Model Context Protocol) · `GET /v1/catalog/openapi.json` · per-listing OpenAPI/Postman specs |
+| Protocol-native discovery | `GET /.well-known/agent.json` (A2A agent card) · `GET /.well-known/mcp.json` + `POST /mcp` (Model Context Protocol — `tools/call` executes real, payment-gated calls; see [docs/MCP.md](docs/MCP.md)) · `GET /v1/catalog/openapi.json` · per-listing OpenAPI/Postman specs |
 
 Every metered response includes a `meta` envelope (`requestId`, `cacheHit`, `providers`,
 `latencyMs`) and errors share one shape (`{ error: { code, message, requestId } }`). Rate
@@ -342,7 +344,7 @@ agentmarket/
     agent-sdk/               TypeScript client SDK (npm: @rohankumar4179/agent-sdk)
     agent-sdk-python/        Python client SDK
   docs/                     Full documentation set (see below)
-  phases/                   Per-phase implementation record (all 13 done)
+  phases/                   Per-phase implementation record (all 14 done)
   scripts/                  Dev bootstrap + TestNet demo scripts
 ```
 
@@ -351,6 +353,7 @@ agentmarket/
 - [Architecture](docs/ARCHITECTURE.md)
 - [API Reference](docs/API.md)
 - [Payment Flow (x402)](docs/PAYMENT_FLOW.md)
+- [Model Context Protocol (MCP)](docs/MCP.md)
 - [Database Schema](docs/DATABASE_SCHEMA.md)
 - [Installation Guide](docs/INSTALLATION.md)
 - [Deployment Guide](docs/DEPLOYMENT_GUIDE.md)
