@@ -1,3 +1,4 @@
+import type { RouteDiscovery } from '@agentmarket/payments';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import type { ZodType } from 'zod';
 import type { AppContext } from '../context.js';
@@ -20,6 +21,8 @@ export interface RegisterMeteredRouteOptions<TQuery, TBody, TResult> {
   priceUsd: number;
   /** See MeteredRouteMeta.listingId — omitted by every first-party route today. */
   listingId?: string;
+  /** Optional Bazaar discovery enrichment (example params / body / response) for this route's catalog entry. */
+  discovery?: RouteDiscovery;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   querySchema?: ZodType<TQuery, any, any>;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -43,7 +46,8 @@ export interface RegisterMeteredRouteOptions<TQuery, TBody, TResult> {
 export function registerMeteredRoute<TQuery = undefined, TBody = undefined, TResult = unknown>(
   options: RegisterMeteredRouteOptions<TQuery, TBody, TResult>,
 ): void {
-  const { server, ctx, method, url, resource, priceUsd, listingId, querySchema, bodySchema, handler } = options;
+  const { server, ctx, method, url, resource, priceUsd, listingId, discovery, querySchema, bodySchema, handler } =
+    options;
 
   server.route({
     method,
@@ -54,7 +58,9 @@ export function registerMeteredRoute<TQuery = undefined, TBody = undefined, TRes
         body: bodySchema ? bodySchema.parse(request.body) : undefined,
       };
     },
-    preHandler: [tracedPreHandler('payment.gate', createX402PreHandler(ctx, { resource, priceUsd, listingId }))],
+    preHandler: [
+      tracedPreHandler('payment.gate', createX402PreHandler(ctx, { resource, priceUsd, listingId, discovery })),
+    ],
     handler: tracedHandler('handler', async (request, reply) => {
       const query = request.validated?.query as TQuery;
       const body = request.validated?.body as TBody;
