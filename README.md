@@ -381,6 +381,7 @@ agentmarket/
 - [Contributing](docs/CONTRIBUTING.md)
 - [Pitch script](docs/PITCH_SCRIPT.md)
 - [Pitch deck prompt](docs/PITCH_DECK.md) · [Slides](https://docs.google.com/presentation/d/1B5JbqAXSVYPB3MJI0PZcd3iT6QftsqVr9PQTgDdcW04/edit?usp=sharing)
+- [Pitch research (market, protocol landscape, competitors, sourced)](docs/PITCH_RESEARCH.md)
 
 ## Tech stack
 

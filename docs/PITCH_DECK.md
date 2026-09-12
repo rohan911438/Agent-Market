@@ -2,7 +2,8 @@
 
 Ready-to-paste prompt for an AI slide generator (Gamma, Tome, Canva Magic Design,
 Beautiful.ai, etc.). Built from the actual shipped product — see [docs/PITCH_SCRIPT.md](PITCH_SCRIPT.md)
-for the companion 2:35 narration script.
+for the companion 2:35 narration script, and [docs/PITCH_RESEARCH.md](PITCH_RESEARCH.md)
+for the sourced market/protocol-landscape research behind the claims below.
 
 ---
 
