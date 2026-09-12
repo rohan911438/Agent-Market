@@ -23,6 +23,17 @@ export interface RegisterMeteredRouteOptions<TQuery, TBody, TResult> {
   listingId?: string;
   /** Optional Bazaar discovery enrichment (example params / body / response) for this route's catalog entry. */
   discovery?: RouteDiscovery;
+  /**
+   * Overrides `resource`/`priceUsd`/`listingId` per-request instead of using
+   * the static values above — for a route whose price depends on a path
+   * param not known until the request arrives (e.g. a per-listing invoke
+   * route priced at that listing's own `priceUsd`). Runs once, before the
+   * payment gate, exactly like `createX402PreHandler`'s own resolver-form
+   * `meta` (see its docstring) — this just plumbs that same capability
+   * through to the caching/audit bookkeeping below, which otherwise only
+   * ever sees the static `resource`/`priceUsd`/`listingId` closed over above.
+   */
+  resolveMeta?: (request: FastifyRequest) => Promise<{ resource: string; priceUsd: number; listingId?: string }>;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   querySchema?: ZodType<TQuery, any, any>;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -46,8 +57,16 @@ export interface RegisterMeteredRouteOptions<TQuery, TBody, TResult> {
 export function registerMeteredRoute<TQuery = undefined, TBody = undefined, TResult = unknown>(
   options: RegisterMeteredRouteOptions<TQuery, TBody, TResult>,
 ): void {
-  const { server, ctx, method, url, resource, priceUsd, listingId, discovery, querySchema, bodySchema, handler } =
+  const { server, ctx, method, url, resource, priceUsd, listingId, discovery, resolveMeta, querySchema, bodySchema, handler } =
     options;
+
+  const paymentGateMeta = resolveMeta
+    ? async (request: FastifyRequest) => {
+        const resolved = await resolveMeta(request);
+        request.resolvedMeteredMeta = resolved;
+        return resolved;
+      }
+    : { resource, priceUsd, listingId, discovery };
 
   server.route({
     method,
@@ -58,9 +77,7 @@ export function registerMeteredRoute<TQuery = undefined, TBody = undefined, TRes
         body: bodySchema ? bodySchema.parse(request.body) : undefined,
       };
     },
-    preHandler: [
-      tracedPreHandler('payment.gate', createX402PreHandler(ctx, { resource, priceUsd, listingId, discovery })),
-    ],
+    preHandler: [tracedPreHandler('payment.gate', createX402PreHandler(ctx, paymentGateMeta))],
     handler: tracedHandler('handler', async (request, reply) => {
       const query = request.validated?.query as TQuery;
       const body = request.validated?.body as TBody;
@@ -79,9 +96,10 @@ export function registerMeteredRoute<TQuery = undefined, TBody = undefined, TRes
         const paymentContext = request.paymentContext;
         if (!paymentContext || reply.statusCode !== 200) return payload;
 
+        const effectiveResource = request.resolvedMeteredMeta?.resource ?? resource;
         const payloadStr = typeof payload === 'string' ? payload : String(payload);
         const expiresAt = new Date(Date.now() + REPLAY_CACHE_TTL_SECONDS * 1000);
-        const cached = await ctx.db.cachedResponses.upsert(`payment:${paymentContext.paymentRef}`, resource, payloadStr, expiresAt);
+        const cached = await ctx.db.cachedResponses.upsert(`payment:${paymentContext.paymentRef}`, effectiveResource, payloadStr, expiresAt);
         await ctx.db.payments.markSettled(paymentContext.paymentRef, paymentContext.transactionId ?? 'unknown', cached.id);
 
         return payload;
@@ -90,10 +108,13 @@ export function registerMeteredRoute<TQuery = undefined, TBody = undefined, TRes
     onResponse: [
       async (request: FastifyRequest, reply: FastifyReply) => {
         const latencyMs = Math.max(0, Math.round(reply.elapsedTime ?? Date.now() - request.startTimeMs));
+        const effectiveResource = request.resolvedMeteredMeta?.resource ?? resource;
+        const effectivePriceUsd = request.resolvedMeteredMeta?.priceUsd ?? priceUsd;
+        const effectiveListingId = request.resolvedMeteredMeta?.listingId ?? listingId;
 
         await ctx.db.apiRequests.create({
           requestId: request.requestId,
-          route: resource,
+          route: effectiveResource,
           method,
           ipAddress: request.ip,
           walletId: request.paymentContext?.walletId,
@@ -102,11 +123,11 @@ export function registerMeteredRoute<TQuery = undefined, TBody = undefined, TRes
           statusCode: reply.statusCode,
           latencyMs,
           errorCode: reply.statusCode >= 400 ? request.errorCode : undefined,
-          listingId,
+          listingId: effectiveListingId,
         });
 
         if (reply.statusCode === 200 && request.paymentContext?.walletId) {
-          await ctx.db.usage.record(resource, priceUsd, request.paymentContext.walletId);
+          await ctx.db.usage.record(effectiveResource, effectivePriceUsd, request.paymentContext.walletId);
         }
       },
     ],

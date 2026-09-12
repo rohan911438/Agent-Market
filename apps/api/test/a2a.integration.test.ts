@@ -61,7 +61,14 @@ describe('A2A (Agent-to-Agent) protocol (Phase 5)', () => {
         server.inject({ method: 'GET', url: '/.well-known/mcp.json' }),
       ]);
       const skillIds = new Set(agentCard.json().skills.map((s: { id: string }) => s.id));
-      const toolNames = mcpManifest.json().tools.map((t: { name: string }) => t.name);
+      // `discover_capabilities` is an MCP-native tool with no OpenAPI operation
+      // (and so no A2A task type) behind it — see mcp-catalog.ts's
+      // buildDiscoverCapabilitiesTool. Every *other* manifest tool is still
+      // required to share this namespace with its A2A skill.
+      const toolNames = mcpManifest
+        .json()
+        .tools.map((t: { name: string }) => t.name)
+        .filter((name: string) => name !== 'discover_capabilities');
       for (const name of toolNames) {
         expect(skillIds.has(name)).toBe(true);
       }

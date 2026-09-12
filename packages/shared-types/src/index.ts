@@ -1,5 +1,6 @@
 export * from './a2a.js';
 export * from './analytics.js';
+export * from './budget.js';
 export * from './catalog.js';
 export * from './collections.js';
 export * from './common.js';

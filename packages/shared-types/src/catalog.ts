@@ -18,6 +18,8 @@ export const McpToolMetadataSchema = z.object({
   method: z.enum(['GET', 'POST', 'PUT', 'PATCH', 'DELETE']),
   isThirdParty: z.boolean(),
   slug: z.string().optional(),
+  /** The OpenAPI operationId this tool was flattened from — needed to re-select the same operation when actually invoking a third-party listing (see services/listing-invocation.ts). Always present; kept optional for backward compatibility with any manifest snapshot recorded before this field existed. */
+  operationId: z.string().optional(),
 });
 export type McpToolMetadata = z.infer<typeof McpToolMetadataSchema>;
 
