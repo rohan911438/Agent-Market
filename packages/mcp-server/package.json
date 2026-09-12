@@ -1,0 +1,33 @@
+{
+  "name": "@rohankumar4179/agentmarket-mcp",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Stdio MCP server that bridges Claude Desktop, Cursor, Windsurf, and other local MCP clients to AgentMarket's remote Streamable HTTP MCP endpoint (/mcp) — install with npx, no local API required.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "agentmarket-mcp": "dist/index.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint src --max-warnings 0",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0"
+  }
+}

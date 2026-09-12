@@ -108,7 +108,7 @@ flowchart LR
     end
     subgraph Render
         Api[apps/api — Fastify]
-        DB[(SQLite / Postgres)]
+        DB[(Postgres)]
     end
     subgraph External
         Facilitator[x402 Facilitator]
@@ -127,11 +127,10 @@ flowchart LR
   instances for these concerns and can run behind a load balancer with more than one
   replica. See [SECURITY.md](SECURITY.md) for why `CACHE_DRIVER=memory` (the default)
   doesn't support that.
-- **The database is the actual scaling constraint today**, not the API process — see
-  [SECURITY.md](SECURITY.md#known-gaps-tracked-not-blocking-phase-1) for why the
-  shipped SQLite-in-container setup can't run more than one instance or survive a
-  redeploy, and [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md#migrating-sqlite--postgres)
-  for the migration path.
+- **The database now runs on managed Postgres** (`render.yaml` provisions it in
+  production; `docker compose --profile postgres` locally), which resolved the earlier
+  single-writer SQLite-in-container constraint — see
+  [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md#database-postgres).
 - **The per-provider analytics query is O(request volume in the selected time
   window)**, not O(1): `ApiRequestRepository.findForProvider` pulls every raw
   `ApiRequest` row in range into Node so the caller can compute exact time-bucketed

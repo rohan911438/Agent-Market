@@ -102,14 +102,8 @@ accident — see "Known gaps" below for what that currently excludes and why.
 - CSRF is not a concern for this API (no cookie-based session state; every metered
   request must carry its own payment proof), but a browser-based admin panel added
   later would need to reconsider this.
-- **`apps/api/Dockerfile`'s runtime image still boots on SQLite** (`file:./prod.db`,
-  no volume mounted) even though `render.yaml`/`DEPLOYMENT_GUIDE.md` describe Postgres
-  as the production target and `docker-compose.yml` already provisions a local Postgres
-  profile for it. Two consequences until the migration in
-  [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md#migrating-sqlite--postgres) is actually
-  carried out: (1) every deploy/restart on a platform that doesn't persist the
-  container filesystem wipes the database — there is no data durability guarantee
-  today; (2) SQLite is a single-writer file, so the API cannot run more than one
-  instance — it cannot scale horizontally as-is. This is the single biggest
-  scalability limitation in the current deployment and should be treated as a
-  prerequisite for any real production traffic, not a nice-to-have.
+- **Resolved:** `apps/api`'s runtime previously booted on an in-container SQLite file
+  with no volume mounted (no durability across redeploys, no horizontal scaling —
+  SQLite is single-writer). Production now runs on the managed Postgres `render.yaml`
+  provisions (`fromDatabase` wires `DATABASE_URL`), and local dev/CI run against a real
+  Postgres too — see [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md#database-postgres).

@@ -238,6 +238,21 @@ full two-sided marketplace with agent-native discovery protocols on top.
 
 See [phases/README.md](phases/README.md) for the per-phase implementation record.
 
+Connect any MCP client (Claude Desktop, Cursor, Windsurf, ...) to the live deployment with
+one published package — no local setup needed:
+
+```bash
+npx -y @rohankumar4179/agentmarket-mcp
+```
+
+or add it to the client's config directly:
+
+```json
+{ "mcpServers": { "agentmarket": { "command": "npx", "args": ["-y", "@rohankumar4179/agentmarket-mcp"] } } }
+```
+
+See [packages/mcp-server](packages/mcp-server) for pointing it at a local API instead.
+
 ## API surface
 
 Full request/response contracts: [docs/API.md](docs/API.md). Summary:
@@ -343,6 +358,8 @@ agentmarket/
                              confidence → explain → format pipeline
     agent-sdk/               TypeScript client SDK (npm: @rohankumar4179/agent-sdk)
     agent-sdk-python/        Python client SDK
+    mcp-server/              Stdio↔HTTP MCP bridge for Claude Desktop/Cursor/etc.
+                             (npm: @rohankumar4179/agentmarket-mcp)
   docs/                     Full documentation set (see below)
   phases/                   Per-phase implementation record (all 14 done)
   scripts/                  Dev bootstrap + TestNet demo scripts
