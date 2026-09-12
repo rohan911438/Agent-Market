@@ -56,7 +56,22 @@ curl http://localhost:4000/.well-known/mcp.json | jq '.tools | length'
 
 ### Example MCP client configuration
 
-Claude Desktop / any client reading `mcpServers` config:
+For a client that only speaks stdio (Claude Desktop, Cursor, the `claude mcp add` CLI),
+use the published bridge package — no local API needed, defaults to the deployed
+instance ([packages/mcp-server](../packages/mcp-server)):
+
+```json
+{
+  "mcpServers": {
+    "agentmarket": {
+      "command": "npx",
+      "args": ["-y", "@rohankumar4179/agentmarket-mcp"]
+    }
+  }
+}
+```
+
+For a client that reads Streamable HTTP `mcpServers` config directly:
 
 ```json
 {

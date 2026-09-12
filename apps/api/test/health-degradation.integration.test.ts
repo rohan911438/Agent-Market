@@ -27,9 +27,10 @@ describe('health reflects a real dependency degradation', () => {
   });
 
   it('reports healthy:false, HTTP 503, and the specific broken dependency when the database is unreachable', async () => {
-    // A directory that doesn't exist — SQLite/Prisma cannot create the
-    // containing path, so every query against this client genuinely fails,
-    // simulating "unreachable" without needing a real second database.
+    // A `file:` URL: invalid for this Postgres-only client, so Prisma rejects
+    // it at connection-validation time — every query against this client
+    // genuinely fails fast, simulating "unreachable" without needing a real
+    // second database or waiting on a network timeout.
     const brokenDb = new Database(
       createPrismaClient('file:./this/directory/does/not/exist/unreachable.db'),
     );

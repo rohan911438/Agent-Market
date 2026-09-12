@@ -5,8 +5,9 @@
 - Node.js ≥ 20 (developed against Node 24)
 - npm ≥ 10
 
-No database server, no Redis, and no third-party API keys are required for Phase 1 —
-SQLite is a file, the default cache is in-memory, and every default market-data
+A local Postgres is required (the Prisma schema is Postgres-native — see
+[DATABASE_SCHEMA.md](DATABASE_SCHEMA.md)); no Redis and no third-party API keys are
+required otherwise — the default cache is in-memory, and every default market-data
 provider is keyless.
 
 ## Setup
@@ -25,8 +26,15 @@ cp apps/web/.env.example apps/web/.env
 cp packages/database/.env.example packages/database/.env
 ```
 
-Defaults work as-is for local dev (`PAYMENT_PROVIDER=mock`, `CACHE_DRIVER=memory`,
-`DATABASE_URL=file:./dev.db`).
+Start local Postgres:
+
+```bash
+docker compose --profile postgres up -d postgres
+```
+
+Defaults work as-is for local dev otherwise (`PAYMENT_PROVIDER=mock`,
+`CACHE_DRIVER=memory`, `DATABASE_URL=postgresql://agentmarket:agentmarket@localhost:5432/agentmarket`
+— matching the docker-compose credentials above).
 
 ## Database
 
@@ -72,10 +80,12 @@ real x402 facilitator on Algorand TestNet:
 npm test              # every package + apps/api's integration suite
 ```
 
-`apps/api`'s integration tests spin up a throwaway SQLite database via
-`prisma db push` (see `apps/api/test/global-setup.ts`) and exercise the real Fastify
-server through `.inject()` — no separate server process needed. `apps/api`'s suite
-runs with coverage enabled and is gated on the thresholds in
+`apps/api`'s integration tests run against a real (throwaway) Postgres database —
+`apps/api/test/global-setup.ts` drops and recreates the `public` schema against the
+local docker-compose Postgres (or `DATABASE_URL`, if already pointed at Postgres — CI
+sets its own), then `prisma db push`es the current schema before each run. Tests exercise
+the real Fastify server through `.inject()` — no separate server process needed.
+`apps/api`'s suite runs with coverage enabled and is gated on the thresholds in
 `apps/api/vitest.config.ts`.
 
 ## Load testing
@@ -90,19 +100,17 @@ intelligence engine, cache, DB writes — with a fresh payment nonce per request
 `apps/api/scripts/load-test.mjs` for options (target URL, duration, connections) and a
 note on the default rate limit dominating throughput from a single IP.
 
-## Optional: local dev infra (Redis / Postgres)
+## Optional: Redis (for cache/rate-limiter parity)
 
-`npm run dev` needs no external infrastructure — SQLite + the in-memory cache are the
-Phase 1 defaults. For parity with a scaled-up setup:
+Postgres (above) is required; Redis is not — `npm run dev` works with the default
+in-memory cache. For parity with a scaled-up, multi-instance setup:
 
 ```bash
-docker compose up -d                        # Redis only
-docker compose --profile postgres up -d     # + Postgres
+docker compose up -d     # Redis
 ```
 
 `CACHE_DRIVER=redis` in `apps/api/.env` (with the Redis above running) switches the
 cache and rate-limiter to it — set `REDIS_URL=redis://localhost:6379` alongside it.
-Postgres is still infra prep only (Phase 1 stays on SQLite).
 
 ## Optional: keyed providers
 

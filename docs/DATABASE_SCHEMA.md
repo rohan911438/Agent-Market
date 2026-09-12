@@ -1,8 +1,10 @@
 # Database Schema
 
-Prisma + SQLite for Phase 1 (`packages/database/prisma/schema.prisma`), designed to move
-to Postgres with a one-line `provider` change — nothing in the schema uses a
-SQLite-only feature.
+Prisma + Postgres (`packages/database/prisma/schema.prisma`) — local dev and CI run
+against a real Postgres (`docker compose --profile postgres up -d postgres`), and
+production uses the managed Postgres `render.yaml` provisions. See
+[INSTALLATION.md](INSTALLATION.md#database) and
+[DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md#database-postgres).
 
 ```mermaid
 erDiagram
