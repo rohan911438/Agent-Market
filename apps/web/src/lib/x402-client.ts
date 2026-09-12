@@ -69,6 +69,7 @@ export async function buildRealAlgoPaymentHeader(
   signer: ClientAvmSigner,
   x402Version: number,
   requirement: PaymentRequirement,
+  extensions?: Record<string, unknown>,
 ): Promise<string> {
   const algodUrl = ALGOD_URLS[config.algorandNetwork] ?? ALGOD_URLS.testnet!;
   const algodClient = new algosdk.Algodv2('', algodUrl, '');
@@ -93,6 +94,7 @@ export async function buildRealAlgoPaymentHeader(
     network: requirement.network,
     asset: requirement.asset,
     payload: { paymentGroup: [bytesToBase64(signed)], paymentIndex: 0 },
+    ...(extensions ? { extensions } : {}),
   });
 }
 
@@ -123,6 +125,7 @@ export async function buildRealPaymentHeader(
   signer: ClientAvmSigner,
   x402Version: number,
   requirement: PaymentRequirement,
+  extensions?: Record<string, unknown>,
 ): Promise<string> {
   const scheme = new ExactAvmScheme(signer);
   const { payload } = await scheme.createPaymentPayload(x402Version, assertCaip2Requirement(requirement));
@@ -132,5 +135,10 @@ export async function buildRealPaymentHeader(
     network: requirement.network,
     asset: requirement.asset,
     payload,
+    // Echoed verbatim from the 402 response — see algorand-scheme.ts's sibling
+    // implementation in packages/agent-sdk for why this is required for the
+    // facilitator to catalog the resource in the Bazaar / attribute a
+    // challenge tag, confirmed against the live facilitator.
+    ...(extensions ? { extensions } : {}),
   });
 }

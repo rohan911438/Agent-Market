@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import type { PaymentPayload, PaymentRequirement } from '@rohankumar4179/shared-types';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AlgorandX402Provider, type AlgorandX402ProviderConfig } from './algorand-x402-provider.js';
 import type { PaymentContext } from './payment-provider.interface.js';
 
@@ -90,5 +91,68 @@ describe('AlgorandX402Provider — challenge tag + Bazaar discovery', () => {
 
     const noName = new AlgorandX402Provider({ ...baseConfig, bazaarDiscovery: true });
     expect(noName.getResponseExtensions(ctx({ method: 'GET' }))!['x402-merchant']).toBeUndefined();
+  });
+});
+
+describe('AlgorandX402Provider — verify/settle forward the client-echoed extensions bag', () => {
+  // Regression for a real bug: a real settled MainNet payment (2026-09-11)
+  // was recorded by the GoPlausible facilitator's leaderboard with
+  // bazaar:false, challenge:false. Root cause traced to every AVM client in
+  // this repo (packages/agent-sdk's AlgorandPaymentScheme, apps/web's
+  // x402-client.ts, scripts/testnet/demo-payment.mjs) never echoing the 402
+  // response's `extensions` bag back in the PaymentPayload, compounded by
+  // PaymentPayloadSchema having no `extensions` field to survive
+  // decodePaymentHeader's zod .parse() even if a client did. Fixed on both
+  // sides; this test pins the facilitator-facing half — verify()/settle()
+  // must forward whatever `extensions` the decoded payload carries,
+  // unmodified, since that's what the facilitator's Bazaar/challenge-tag
+  // indexer actually reads (confirmed against the live facilitator's own
+  // discovery/leaderboard endpoints — see docs/PAYMENT_FLOW.md).
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  const requirement: PaymentRequirement = {
+    scheme: 'exact',
+    network: 'algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73ktiC1qzkkit8=',
+    maxAmountRequired: '50000',
+    resource: '/v1/analyze',
+    description: 'Access to /v1/analyze',
+    mimeType: 'application/json',
+    payTo: 'PAYTOADDR',
+    asset: '31566704',
+    maxTimeoutSeconds: 60,
+  };
+
+  const payload: PaymentPayload = {
+    x402Version: 2,
+    scheme: 'exact',
+    network: requirement.network,
+    payload: { paymentGroup: ['AAAA'], paymentIndex: 0 },
+    extensions: { bazaar: { info: { input: { type: 'http', method: 'GET' } } } },
+  };
+
+  it('includes payload.extensions in the /verify request body', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ isValid: true, payerAddress: 'PAYER' }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const provider = new AlgorandX402Provider({ ...baseConfig });
+    await provider.verify(payload, requirement);
+
+    const [, init] = fetchMock.mock.calls[0]!;
+    const sentBody = JSON.parse((init as RequestInit).body as string);
+    expect(sentBody.paymentPayload.extensions).toEqual(payload.extensions);
+  });
+
+  it('includes payload.extensions in the /settle request body', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ success: true, transactionId: 'TXID' }), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const provider = new AlgorandX402Provider({ ...baseConfig });
+    await provider.settle(payload, requirement);
+
+    const [, init] = fetchMock.mock.calls[0]!;
+    const sentBody = JSON.parse((init as RequestInit).body as string);
+    expect(sentBody.paymentPayload.extensions).toEqual(payload.extensions);
   });
 });
