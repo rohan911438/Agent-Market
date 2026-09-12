@@ -5,7 +5,6 @@ import type { OutgoingHttpHeaders } from 'node:http';
 import { z } from 'zod';
 import type { AppContext } from '../context.js';
 import { buildCatalogTools, type CatalogTool } from './mcp-catalog.js';
-import { mcpSessionBudgets } from './mcp-session-budget.js';
 
 export type McpToolResult = CallToolResult;
 
@@ -110,7 +109,7 @@ export async function executeCatalogTool(
       sessionUsd: control.maxSessionSpendUsd,
       dailyUsd: control.maxDailySpendUsd,
     };
-    const budgetCheck = mcpSessionBudgets.check(control.sessionId, budgetConfig, priceUsd);
+    const budgetCheck = await ctx.mcpSessionBudgets.check(control.sessionId, budgetConfig, priceUsd);
     if (!budgetCheck.ok) {
       return errorResult(
         'BUDGET_EXCEEDED',
@@ -132,7 +131,7 @@ export async function executeCatalogTool(
   }
 
   if (priceUsd !== null && priceUsd > 0) {
-    mcpSessionBudgets.record(control.sessionId, priceUsd);
+    await ctx.mcpSessionBudgets.record(control.sessionId, priceUsd);
   }
 
   const structured = asRecord(injected.body);

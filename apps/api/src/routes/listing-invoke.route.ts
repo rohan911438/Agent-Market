@@ -2,7 +2,7 @@ import { AppError } from '@rohankumar4179/shared-types';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import type { AppContext } from '../context.js';
-import { buildUpstreamRequest, invokeUpstreamListing, resolveListingOperation } from '../services/listing-invocation.js';
+import { buildUpstreamRequest, invokeUpstreamListingCached, resolveListingOperation } from '../services/listing-invocation.js';
 import type { MeteredHandlerResult } from './register-metered-route.js';
 import { registerMeteredRoute } from './register-metered-route.js';
 
@@ -34,7 +34,7 @@ export async function listingInvokeHandler(
   const { slug } = InvokeListingParamsSchema.parse(request.params);
   const listing = await requirePublishedListing(ctx, slug);
 
-  const result = await invokeUpstreamListing(listing, body.operationId, body.params);
+  const result = await invokeUpstreamListingCached(ctx.cache, listing, body.operationId, body.params);
   if (result.statusCode >= 400) {
     throw new AppError(
       'PROVIDER_UNAVAILABLE',
@@ -44,7 +44,7 @@ export async function listingInvokeHandler(
     );
   }
 
-  return { body: result.body, cacheHit: false, providers: [listing.slug] };
+  return { body: result.body, cacheHit: result.cacheHit, providers: [listing.slug] };
 }
 
 /**

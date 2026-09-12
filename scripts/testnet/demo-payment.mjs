@@ -31,7 +31,10 @@ import { resolveNetwork } from './network-config.mjs';
 const API_URL = process.argv[2] ?? 'http://localhost:4000';
 const SYMBOL = process.argv[3] ?? 'BTC';
 const net = resolveNetwork(process.argv[4]);
-const RESOURCE_PATH = `/v1/analyze?symbol=${SYMBOL}`;
+// Optional 5th arg overrides the metered resource path entirely (e.g. for
+// probing a different first-party endpoint) — defaults to the original
+// /v1/analyze?symbol=... behavior.
+const RESOURCE_PATH = process.argv[5] ?? `/v1/analyze?symbol=${SYMBOL}`;
 
 const wallets = loadWallets();
 const payer = wallets.payer;

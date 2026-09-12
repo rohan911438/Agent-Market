@@ -201,10 +201,12 @@ Three levels, two different enforcement points:
 
 - **Per-call** (`maxCostUsd`): checked in-process before any payment is attempted — no
   session needed.
-- **Session** (`maxSessionSpendUsd`, `maxDailySpendUsd`): tracked in-memory, keyed by the
-  agent's own `_agentmarket.sessionId` — **not** the MCP transport's own session concept,
-  which stays stateless (see [Known limitations](#known-limitations)). A session's caps
-  are fixed by whichever call first declares them; a later call cannot loosen them.
+- **Session** (`maxSessionSpendUsd`, `maxDailySpendUsd`): tracked in the shared `ICache`
+  (Redis-backed once `CACHE_DRIVER=redis` is set — the same store `RateLimiterService`
+  already uses, so it survives a restart and is shared correctly across horizontally-scaled
+  instances), keyed by the agent's own `_agentmarket.sessionId` — **not** the MCP
+  transport's own session concept, which stays stateless. A session's caps are fixed by
+  whichever call first declares them; a later call cannot loosen them.
 - **Platform daily cap**: the pre-existing, DB-backed per-wallet daily spend cap in
   `middleware/x402-payment.ts` still applies underneath all of the above, regardless of
   what any agent declares.
@@ -257,13 +259,13 @@ frames — is exercised end-to-end in
 | `BUDGET_EXCEEDED` on the very first call | `maxCostUsd` (or an already-established session cap) is lower than the tool's price — check `discover_capabilities`/`tools/list` for the real price first. |
 | Third-party tool returns `PROVIDER_UNAVAILABLE` immediately | The listing's `upstreamUrl` resolves to a blocked internal/loopback address (SSRF guard), or the upstream is genuinely down/unreachable/timing out. |
 | A published listing's operation isn't callable | Its `operationId` doesn't match anything in the tool name — call `tools/list` and use the exact `agentmarket.operationId` from `_meta`, not a guessed name. |
-| Session budget doesn't seem to persist | Session state is in-memory per API process (see below) — a server restart, or a different process behind a load balancer, starts a fresh session map. |
+| Session budget doesn't seem to persist | Confirm `CACHE_DRIVER=redis`/`REDIS_URL` are set in this deployment — with the default `CACHE_DRIVER=memory`, session state is still per API process and a restart or a different process behind a load balancer starts fresh. |
 
 ## Known limitations
 
-- **Session/budget state is in-memory, per API process** — it does not survive a restart
-  and is not shared across horizontally-scaled instances. The platform's per-wallet daily
-  cap (DB-backed) remains authoritative regardless.
+- **Third-party listing invocations aren't attestable and have no dispute path** — a bad
+  response from a published listing is simply returned to the caller; there is no
+  mechanism yet to contest a paid call that returned garbage.
 - **No DNS-rebinding-proof SSRF protection** — the guard blocks IP literals/hostnames in
   blocked ranges, but does not re-validate the resolved IP at connection time. Acceptable
   for this pass; a future version could route third-party calls through an egress proxy
@@ -276,7 +278,6 @@ frames — is exercised end-to-end in
 
 ## Future improvements
 
-- A persistent (Redis/DB-backed) session budget store for multi-instance deployments.
 - Surfacing resources/prompts in the plain-JSON manifest for non-MCP tooling.
 - An egress proxy or allowlist for third-party upstream calls, closing the DNS-rebinding
   gap noted above.
