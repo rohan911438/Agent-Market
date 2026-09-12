@@ -1,21 +1,26 @@
 #!/usr/bin/env node
-// Opts a generated TestNet wallet into the TestNet USDC ASA (10458941) so it
-// can send/receive it. Required once per wallet before it can pay or be paid
-// in USDC. Needs the wallet to already hold a small amount of TestNet ALGO
-// (covers the opt-in transaction's own network fee + minimum balance bump).
+// Opts a generated wallet into the USDC ASA for the chosen network so it can
+// send/receive USDC. Required once per wallet PER NETWORK before it can pay
+// or be paid in USDC. Needs the wallet to already hold a small amount of
+// that network's ALGO (covers the opt-in transaction's own network fee +
+// the ~0.1 ALGO minimum-balance bump the opt-in adds).
 //
-// Usage: node scripts/testnet/opt-in-usdc.mjs <label>
+// Usage: node scripts/testnet/opt-in-usdc.mjs <label> [network]
+//   network: "testnet" (default) | "mainnet"  (or set X402_DEMO_NETWORK)
+//   e.g. node scripts/testnet/opt-in-usdc.mjs merchant
+//        node scripts/testnet/opt-in-usdc.mjs merchant mainnet
 import algosdk from 'algosdk';
 import { loadWallets } from './wallet-store.mjs';
-
-const USDC_TESTNET_ASSET_ID = 10458941;
-const ALGOD_URL = process.env.ALGOD_TESTNET_URL || 'https://testnet-api.algonode.cloud';
+import { resolveNetwork } from './network-config.mjs';
 
 const label = process.argv[2];
 if (!label) {
-  console.error('Usage: node scripts/testnet/opt-in-usdc.mjs <label>');
+  console.error('Usage: node scripts/testnet/opt-in-usdc.mjs <label> [testnet|mainnet]');
   process.exit(1);
 }
+
+const net = resolveNetwork(process.argv[3]);
+const USDC_ASSET_ID = net.usdcAssetId;
 
 const wallets = loadWallets();
 const wallet = wallets[label];
@@ -24,13 +29,15 @@ if (!wallet) {
   process.exit(1);
 }
 
-const algodClient = new algosdk.Algodv2('', ALGOD_URL, '');
+const algodClient = new algosdk.Algodv2('', net.algodUrl, '');
 const account = algosdk.mnemonicToSecretKey(wallet.mnemonic);
 
 const accountInfo = await algodClient.accountInformation(account.addr).do();
-const alreadyOptedIn = (accountInfo.assets ?? []).some((a) => Number(a.assetId ?? a['asset-id']) === USDC_TESTNET_ASSET_ID);
+const alreadyOptedIn = (accountInfo.assets ?? []).some(
+  (a) => Number(a.assetId ?? a['asset-id']) === USDC_ASSET_ID,
+);
 if (alreadyOptedIn) {
-  console.log(`"${label}" (${wallet.address}) is already opted into USDC.`);
+  console.log(`"${label}" (${wallet.address}) is already opted into ${net.name} USDC (asset ${USDC_ASSET_ID}).`);
   process.exit(0);
 }
 
@@ -39,7 +46,7 @@ const optInTxn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
   sender: account.addr,
   receiver: account.addr,
   amount: 0,
-  assetIndex: USDC_TESTNET_ASSET_ID,
+  assetIndex: USDC_ASSET_ID,
   suggestedParams,
 });
 
@@ -47,5 +54,5 @@ const signedTxn = optInTxn.signTxn(account.sk);
 const { txid } = await algodClient.sendRawTransaction(signedTxn).do();
 await algosdk.waitForConfirmation(algodClient, txid, 4);
 
-console.log(`Opted in "${label}" (${wallet.address}) to USDC (asset ${USDC_TESTNET_ASSET_ID}).`);
+console.log(`Opted in "${label}" (${wallet.address}) to ${net.name} USDC (asset ${USDC_ASSET_ID}).`);
 console.log(`txId: ${txid}`);
