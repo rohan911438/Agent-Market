@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import type { PaymentPayload, PaymentRequirement } from '@rohankumar4179/shared-types';
-import type { PaymentScheme } from '../types.js';
+import type { DiscoveryEcho, PaymentScheme } from '../types.js';
 
 /**
  * Pays against the server's MockPaymentProvider — always "settles," no
@@ -18,7 +18,7 @@ export class MockPaymentScheme implements PaymentScheme {
     return network === 'mock';
   }
 
-  async createPayload(requirement: PaymentRequirement, x402Version: number, _extensions?: Record<string, unknown>): Promise<PaymentPayload> {
+  async createPayload(requirement: PaymentRequirement, x402Version: number, _discoveryEcho?: DiscoveryEcho): Promise<PaymentPayload> {
     return {
       x402Version,
       scheme: requirement.scheme,

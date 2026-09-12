@@ -81,43 +81,63 @@ body, so the GoPlausible facilitator can catalog the endpoint in its public Baza
 (`GET /discovery/resources`) and, with `X402_CHALLENGE_TAG=x402-global-challenge` set too,
 attribute settlements to the Global x402 Challenge leaderboard.
 
-**A real MainNet settlement on 2026-09-11 exposed a bug in this**: the payment went
-through correctly (200 OK, funds moved on-chain, a real facilitator receipt was issued),
-but the resulting leaderboard entry showed `bazaar: false, challenge: false` — the
-endpoint never appeared in the Bazaar catalog at all. Root cause, confirmed against the
-live facilitator's own `/discovery/resources`, `/data/leaderboards`, and
-`/api/receipt/{txId}` endpoints (not guessed):
+**A real MainNet settlement on 2026-09-11 exposed two compounding bugs in this**: the
+payment went through correctly every time (200 OK, funds moved on-chain, a real
+facilitator receipt was issued), but the resulting leaderboard entry kept showing
+`bazaar: false, challenge: false` across many real settlements — the endpoint never
+appeared in the Bazaar catalog at all. Root cause, confirmed against the live
+facilitator's own `/discovery/resources`, `/data/leaderboards`, and `/api/receipt/{txId}`
+endpoints, cross-checked against the canonical spec (`coinbase/x402` repo,
+`specs/x402-specification-v2.md`) and GoPlausible's own client-library reference doc
+(`x402-avm-extensions-examples.md`) — not guessed:
 
 1. **Cataloging is a side effect of the *client* echoing the 402's `extensions` bag back**
    in its `X-PAYMENT` payload, per the x402 Bazaar extension's documented flow
    ("resource server declares → 402 carries `extensions.bazaar` → client copies it into
    `PaymentPayload` → facilitator extracts it at verify/settle"). None of this repo's three
-   AVM payment clients did that: `packages/agent-sdk/src/payment/algorand-scheme.ts`,
-   `apps/web/src/lib/x402-client.ts`, and `scripts/testnet/demo-payment.mjs` each built
-   their outgoing `PaymentPayload` from only the single accepted `PaymentRequirement`,
-   never the full 402 body — so `extensions` was never in scope to copy.
-2. Even a client that *did* echo it back would have lost it anyway:
-   `PaymentPayloadSchema` (`packages/shared-types/src/payment.ts`) had no `extensions`
-   field, so `decodePaymentHeader`'s `PaymentPayloadSchema.parse(raw)` silently stripped
-   it (zod drops unknown keys by default) before `AlgorandX402Provider.verify()`/`settle()`
+   AVM payment clients did that — each built its outgoing `PaymentPayload` from only the
+   single accepted `PaymentRequirement`, never the full 402 body.
+2. Even a client that *did* echo it back would have lost it anyway: `PaymentPayloadSchema`
+   had no `extensions` field, so `decodePaymentHeader`'s `.parse()` silently stripped it
+   (zod drops unknown keys by default) before `AlgorandX402Provider.verify()`/`settle()`
    ever saw it.
+3. **The real blocker, found only after fixing 1-2 and still seeing `bazaar:false` on
+   settlements proven (via temporary instrumentation) to be sending `extensions`
+   correctly**: the canonical x402 v2 spec puts the resource's real, absolute URL in a
+   *top-level* `resource: { url, description, mimeType }` object on **both** the 402 body
+   and the `PaymentPayload` — a field this codebase's `PaymentRequiredResponseSchema`/
+   `PaymentPayloadSchema` never had at all. `PaymentRequirement.resource` (the field this
+   codebase already had, on every `accepts[]` entry) is a completely different,
+   AgentMarket-internal field: a relative route path (`/v1/analyze`) used for DB
+   bookkeeping/audit labels, never an absolute URL, and per the spec doesn't belong on
+   `PaymentRequirements` at all. The facilitator's Bazaar extractor keys its catalog entry
+   on the *spec's* `resource.url` — which this codebase simply never sent — so cataloging
+   silently no-op'd regardless of `extensions` being present and valid.
 
-**Fix**: `PaymentPayloadSchema` now has an optional `extensions` field; `PaymentScheme.
-createPayload()` takes the 402 response's `extensions` as a third argument and every
-implementation (`AlgorandPaymentScheme`, the web app's `buildRealPaymentHeader`/
-`buildRealAlgoPaymentHeader`, `demo-payment.mjs`) echoes it verbatim into the payload it
-returns. `verify()`/`settle()` needed no change — they already forward the whole decoded
-payload object, so once the schema stopped stripping it, it started reaching the
-facilitator automatically. Regression tests:
-`packages/payments/src/x402-header-codec.test.ts` (round-trip preserves `extensions`) and
-`packages/payments/src/algorand-x402-provider.test.ts` (`verify`/`settle` forward it in
-the request body).
+**Fix**: added the spec's `ResourceInfoSchema` (`{url, description?, mimeType?}`) to
+`shared-types/payment.ts`, as an optional `resource` field on both
+`PaymentRequiredResponseSchema` and `PaymentPayloadSchema`. `X402PaymentService.
+buildPaymentRequired()` now takes an `origin` in its route context (the API's own
+`originOf(request)` helper, wired in `middleware/x402-payment.ts`) and populates
+`body.resource = { url: `${origin}${resource}`, ... }` — generically, for every payment
+provider, not per-provider code. `PaymentScheme.createPayload()`'s third argument became
+a `DiscoveryEcho` bag (`{extensions, resource}` from the 402 response) instead of just
+`extensions`; every implementation (`AlgorandPaymentScheme`, the web app's
+`buildRealPaymentHeader`/`buildRealAlgoPaymentHeader`, `demo-payment.mjs`) echoes both
+fields verbatim into the payload it returns. `verify()`/`settle()` needed no change —
+they already forward the whole decoded payload object. Regression tests:
+`packages/payments/src/x402-header-codec.test.ts` (round-trip preserves `extensions` and
+`resource`) and `packages/payments/src/algorand-x402-provider.test.ts` (`verify`/`settle`
+forward `extensions` in the request body).
 
 If you're debugging a similar "settled but not listed" symptom against this same
-facilitator, check in order: (1) does the 402 body actually carry `extensions.bazaar`
-(`bazaarDiscovery` config on), (2) does your client's outgoing X-PAYMENT payload contain
-an `extensions` key at all, (3) does your server's payload schema/decoder preserve
-unknown-to-you fields rather than stripping them.
+facilitator, check in order: (1) does the 402 body carry a top-level `resource: {url}`
+with a real, absolute, publicly-reachable URL (not `localhost` — the facilitator can't
+catalog an address it can't itself resolve) — this is the field that actually matters;
+(2) does the 402 body also carry `extensions.bazaar` (`bazaarDiscovery` config on); (3)
+does your client's outgoing X-PAYMENT payload contain both `resource` and `extensions`
+keys, verbatim; (4) does your server's payload schema/decoder preserve those fields
+rather than silently stripping unknown keys.
 
 ## Idempotency & replay protection
 

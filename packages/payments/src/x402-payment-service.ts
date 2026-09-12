@@ -1,11 +1,21 @@
-import type { PaymentPayload, PaymentRequiredResponse, PaymentRequirement } from '@rohankumar4179/shared-types';
+import type { PaymentPayload, PaymentRequiredResponse, PaymentRequirement, ResourceInfo } from '@rohankumar4179/shared-types';
 import type { PaymentProvider, RouteDiscovery } from './payment-provider.interface.js';
 import { decodePaymentHeader } from './x402-header-codec.js';
 
-/** Per-request routing metadata that only shapes the Bazaar discovery descriptor. */
+/** Per-request routing metadata that shapes the Bazaar discovery descriptor and the spec-required top-level `resource` object. */
 export interface BuildPaymentRequiredContext {
   method?: string;
   discovery?: RouteDiscovery;
+  /**
+   * Absolute origin (e.g. `https://agentmarket-api-bedc.onrender.com`) of the
+   * current request — this repo's own `resource` string (e.g. `/v1/analyze`)
+   * is deliberately a relative route path used for internal bookkeeping, not
+   * the absolute URL the x402 v2 spec's `ResourceInfo.url` requires. Without
+   * an origin, `resource` is omitted from the 402 body entirely (degrades
+   * gracefully — payment itself still works, only Bazaar cataloging is
+   * affected) rather than emitting a relative URL a facilitator can't use.
+   */
+  origin?: string;
 }
 
 export type IncomingPaymentResult =
@@ -45,12 +55,16 @@ export class X402PaymentService {
     };
     const requirements = this.provider.getRequirements(context);
     const extensions = this.provider.getResponseExtensions?.(context);
+    const resourceInfo: ResourceInfo | undefined = routeContext?.origin
+      ? { url: `${routeContext.origin}${resource}`, description: `Access to ${resource}`, mimeType: 'application/json' }
+      : undefined;
     return {
       body: {
         x402Version: this.provider.x402Version,
         error: 'Payment required — see accepts[] for terms',
         accepts: requirements,
         ...(extensions ? { extensions } : {}),
+        ...(resourceInfo ? { resource: resourceInfo } : {}),
       },
       requirements,
       // Convenience default (accepts[0]) for callers that only ever deal in
