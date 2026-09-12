@@ -25,10 +25,10 @@
     "clean": "rimraf dist"
   },
   "dependencies": {
-    "@asteasolutions/zod-to-openapi": "^7.3.4",
+    "@asteasolutions/zod-to-openapi": "^9.1.0",
     "@modelcontextprotocol/sdk": "^1.30.0",
-    "js-yaml": "^5.2.3",
-    "swagger-ui-dist": "^5.32.12",
-    "zod": "^3.24.1"
+    "js-yaml": "^5.4.1",
+    "swagger-ui-dist": "^5.32.15",
+    "zod": "^4.5.4"
   }
 }

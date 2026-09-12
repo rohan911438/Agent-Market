@@ -12,22 +12,22 @@
   },
   "dependencies": {
     "@rohankumar4179/shared-types": "*",
-    "@perawallet/connect": "^1.6.0",
+    "@perawallet/connect": "^1.6.1",
     "@x402-avm/avm": "^2.6.1",
-    "algosdk": "^3.6.0",
+    "algosdk": "^3.7.0",
     "clsx": "^2.1.1",
-    "framer-motion": "^12.43.0",
-    "lucide-react": "^0.469.0",
+    "framer-motion": "^13.2.0",
+    "lucide-react": "^1.43.0",
     "next": "^16.3.2",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
-    "tailwind-merge": "^2.6.0",
-    "zod": "^3.24.1"
+    "tailwind-merge": "^3.6.0",
+    "zod": "^4.5.4"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",
-    "@types/react": "^19.2.0",
-    "@types/react-dom": "^19.2.0",
+    "@types/react": "^19.2.18",
+    "@types/react-dom": "^19.2.7",
     "postcss": "^8.5.23",
     "tailwindcss": "^4.3.3"
   }
