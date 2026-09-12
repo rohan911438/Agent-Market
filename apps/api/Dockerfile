@@ -52,8 +52,9 @@ COPY --from=build /repo/node_modules/.prisma ./node_modules/.prisma
 # boot to run `prisma migrate deploy` before the server starts serving
 # traffic. Installed fresh here (not copied from `build`) so its own
 # transitive deps resolve cleanly instead of relying on `build`'s hoisted
-# node_modules layout.
-RUN npm install --no-save prisma@6.1.0
+# node_modules layout. Pinned to match @prisma/client from the lockfile —
+# bump both together.
+RUN npm install --no-save prisma@6.19.3
 COPY --from=build /repo/packages/database/prisma ./packages/database/prisma
 
 COPY --from=build /repo/apps/api/package.json ./apps/api/package.json
@@ -79,9 +80,10 @@ COPY --from=build /repo/packages/shared-types/dist ./packages/shared-types/dist
 COPY apps/api/docker-entrypoint.sh ./docker-entrypoint.sh
 RUN chmod +x ./docker-entrypoint.sh
 
-# Every COPY above defaults to root:root ownership — appuser needs write
-# access to /repo itself (not just execute) to create the SQLite file
-# DATABASE_URL points at (file:./prod.db, no volume mounted).
+# Every COPY above defaults to root:root ownership — appuser needs to own the
+# tree so `prisma migrate deploy` (docker-entrypoint.sh) can write its engine
+# cache and the app can read every workspace's dist/. The database is remote
+# Postgres now, so no local data file is created.
 RUN chown -R appuser:appuser /repo
 
 USER appuser
