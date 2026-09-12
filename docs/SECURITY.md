@@ -76,20 +76,25 @@ accident — see "Known gaps" below for what that currently excludes and why.
 - ~~`next` bundles vulnerable transitive `postcss`/`sharp`~~ — fixed: bumped
   `next` (`^16.2.12` → `^16.3.2`, which vendors a patched `postcss`) and the
   top-level `postcss` devDependency to the same patched line.
-- `npm audit --omit=dev` still reports 3 high-severity findings after that fix,
-  none with a non-breaking resolution available (`npm audit fix` alone doesn't
-  move them; forcing would pull breaking major bumps of packages several
-  layers removed from anything this repo calls directly):
-  - `fast-uri` (host-confusion via backslash authority introducer) via
-    Fastify's `fast-json-stringify`/`ajv` response-serialization path.
-  - `nanoid` (indefinite loop on a zero-size custom generator) — this repo
-    never calls a custom-size generator, so the vulnerable code path isn't
-    reachable, but the dependency itself is still flagged.
-  - `deepmerge-ts` via `@prisma/config` → `prisma` — the Prisma CLI, which
-    only runs at build/migrate time, not in the running server.
-  This is why CI's audit gate is `critical` rather than `high` — ratchet it
-  back up once these three are resolved upstream (Dependabot will surface the
-  patched versions once fastify/ajv/prisma release them).
+- ~~`next` (up to and including 16.3.2) had two unauthenticated-RCE
+  advisories~~ (GHSA-p293-qw3h-jr36, GHSA-2xp9-vwfh-vxw4) — fixed 2026-09-12:
+  `npm audit fix` resolved `next` to `16.3.5` within the existing `^16.3.2`
+  range (no `package.json` change needed), along with `fastify` (→5.12.4),
+  `hono` (→4.13.7, transitive), `nanoid` (→3.3.19), `qs` (→6.16.0), `sharp`
+  (→0.35.4), and `fast-uri` (→3.1.7/4.1.4) — every finding that was in the
+  `--omit=dev` production scope. This CI job had been silently red for two
+  pushes before this fix; a future push failing here should be investigated
+  immediately rather than assumed unrelated. **Caught during a live x402
+  MainNet challenge submission push — see docs/PAYMENT_FLOW.md's "Bazaar
+  discovery" section for the payment-side bug found in the same session.**
+- `npm audit --omit=dev` still reports one high-severity finding with no
+  non-breaking resolution available (`npm audit fix` alone doesn't move it;
+  forcing would pull a breaking major bump of packages several layers removed
+  from anything this repo calls directly): `deepmerge-ts` via `@prisma/config`
+  → `prisma` — the Prisma CLI, which only runs at build/migrate time, not in
+  the running server. This is why CI's audit gate is `critical` rather than
+  `high` — ratchet it back up once this is resolved upstream (Dependabot will
+  surface the patched version once Prisma releases it).
 - The default `CACHE_DRIVER=memory` cache/rate-limiter is single-process. Set
   `CACHE_DRIVER=redis` + `REDIS_URL` for a multi-instance deployment — this is now
   fully wired (`apps/api/src/build-context.ts` constructs a real `ioredis` client),
