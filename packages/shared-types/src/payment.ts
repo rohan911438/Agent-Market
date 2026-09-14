@@ -56,6 +56,32 @@ export const ResourceInfoSchema = z.object({
 });
 export type ResourceInfo = z.infer<typeof ResourceInfoSchema>;
 
+/**
+ * The x402-avm v2 spec's `accepted` object — the specific PaymentRequirement
+ * the client built its payload against, nested inside `PaymentPayload`
+ * (never as flat top-level `scheme`/`network` fields, which is what this
+ * codebase sent before this field existed). Confirmed against GoPlausible's
+ * own published `@x402-avm/core` client source
+ * (`x402Client.createPaymentPayload()`): every real client sends
+ * `{..., accepted: requirements}`, and `accepted` is a non-optional field on
+ * their `PaymentPayloadV2Schema`. A settlement can still succeed without it
+ * (this repo's server also sends `paymentRequirements` as a sibling field to
+ * the facilitator), but if the facilitator's strict schema validation gates
+ * whether its Bazaar-cataloging hook runs, a payload missing `accepted`
+ * settles but never catalogs — which matches every real MainNet settlement
+ * observed so far.
+ */
+export const AcceptedRequirementSchema = z.object({
+  scheme: z.string(),
+  network: z.string(),
+  amount: z.string(),
+  asset: z.string(),
+  payTo: z.string(),
+  maxTimeoutSeconds: z.number().int(),
+  extra: z.record(z.string(), z.unknown()).optional().nullable(),
+});
+export type AcceptedRequirement = z.infer<typeof AcceptedRequirementSchema>;
+
 export const PaymentRequiredResponseSchema = z.object({
   x402Version: z.number().int(),
   error: z.string().optional(),
@@ -102,6 +128,11 @@ export const PaymentPayloadSchema = z.object({
   // see ResourceInfoSchema's docstring for why this, not `extensions` alone,
   // is what actually drives Bazaar cataloging.
   resource: ResourceInfoSchema.optional(),
+  // See AcceptedRequirementSchema's docstring — the spec-required nested
+  // echo of the accepted PaymentRequirement, distinct from this schema's own
+  // flat `scheme`/`network`/`asset` fields (kept above for this codebase's
+  // own requirement-matching, unrelated to what the facilitator expects).
+  accepted: AcceptedRequirementSchema.optional(),
 });
 export type PaymentPayload = z.infer<typeof PaymentPayloadSchema>;
 

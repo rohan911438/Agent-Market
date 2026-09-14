@@ -113,6 +113,19 @@ const paymentPayload = {
   // see docs/PAYMENT_FLOW.md's "Bazaar discovery" section.
   ...(paymentRequired.extensions ? { extensions: paymentRequired.extensions } : {}),
   ...(paymentRequired.resource ? { resource: paymentRequired.resource } : {}),
+  // The x402-avm v2 spec's nested echo of the accepted requirement — every
+  // real client (`@x402-avm/core`'s `x402Client.createPaymentPayload()`)
+  // sends this; this repo's own flat `scheme`/`network` fields above are an
+  // internal-only shape the facilitator doesn't recognize as `accepted`.
+  accepted: {
+    scheme: requirement.scheme,
+    network: requirement.network,
+    amount: requirement.amount ?? requirement.maxAmountRequired,
+    asset: requirement.asset,
+    payTo: requirement.payTo,
+    maxTimeoutSeconds: requirement.maxTimeoutSeconds,
+    extra: requirement.extra,
+  },
 };
 const header = Buffer.from(JSON.stringify(paymentPayload), 'utf-8').toString('base64');
 

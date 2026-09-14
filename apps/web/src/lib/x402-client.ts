@@ -99,6 +99,15 @@ export async function buildRealAlgoPaymentHeader(
     payload: { paymentGroup: [bytesToBase64(signed)], paymentIndex: 0 },
     ...(discoveryEcho?.extensions ? { extensions: discoveryEcho.extensions } : {}),
     ...(discoveryEcho?.resource ? { resource: discoveryEcho.resource } : {}),
+    accepted: {
+      scheme: requirement.scheme,
+      network: requirement.network,
+      amount: (requirement.amount ?? requirement.maxAmountRequired)!,
+      asset: requirement.asset,
+      payTo: requirement.payTo,
+      maxTimeoutSeconds: requirement.maxTimeoutSeconds,
+      extra: requirement.extra,
+    },
   });
 }
 
@@ -145,5 +154,14 @@ export async function buildRealPaymentHeader(
     // a challenge tag, confirmed against the live facilitator.
     ...(discoveryEcho?.extensions ? { extensions: discoveryEcho.extensions } : {}),
     ...(discoveryEcho?.resource ? { resource: discoveryEcho.resource } : {}),
+    accepted: {
+      scheme: requirement.scheme,
+      network: requirement.network,
+      amount: (requirement.amount ?? requirement.maxAmountRequired)!,
+      asset: requirement.asset,
+      payTo: requirement.payTo,
+      maxTimeoutSeconds: requirement.maxTimeoutSeconds,
+      extra: requirement.extra,
+    },
   });
 }

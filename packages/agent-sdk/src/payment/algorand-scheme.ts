@@ -77,6 +77,20 @@ export class AlgorandPaymentScheme implements PaymentScheme {
       // live facilitator).
       ...(discoveryEcho?.extensions ? { extensions: discoveryEcho.extensions } : {}),
       ...(discoveryEcho?.resource ? { resource: discoveryEcho.resource } : {}),
+      // The spec-required nested echo of the accepted requirement — see
+      // AcceptedRequirementSchema's docstring. Real x402-avm clients
+      // (`@x402-avm/core`'s `x402Client.createPaymentPayload()`) always send
+      // this; its absence is the likely reason settlements record but never
+      // catalog in the facilitator's Bazaar.
+      accepted: {
+        scheme: requirement.scheme,
+        network: requirement.network,
+        amount,
+        asset: requirement.asset,
+        payTo: requirement.payTo,
+        maxTimeoutSeconds: requirement.maxTimeoutSeconds,
+        extra: requirement.extra,
+      },
     };
   }
 }
